@@ -1,0 +1,805 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>小核酸在研管线数据库</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet"/>
+<style>
+  body { margin:0; background:#0f1117; color:#e2e8f0; font-family:'PingFang SC','Microsoft YaHei',sans-serif; }
+  ::-webkit-scrollbar { width:6px; height:6px; }
+  ::-webkit-scrollbar-track { background:#1a1f2e; }
+  ::-webkit-scrollbar-thumb { background:#334155; border-radius:3px; }
+  ::-webkit-scrollbar-thumb:hover { background:#475569; }
+  .header-gradient { background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); border-bottom: 1px solid #1e40af44; }
+  .card-bg { background:#1a1f2e; border:1px solid #1e293b; }
+  .card-hover:hover { border-color:#3b82f6; transition: border-color 0.2s; }
+  .stage-badge { padding:2px 8px; border-radius:12px; font-size:11px; font-weight:600; }
+  .tooltip-box { position:absolute; background:#1e293b; border:1px solid #334155; border-radius:8px; padding:10px 14px; pointer-events:none; z-index:100; min-width:180px; box-shadow:0 4px 20px rgba(0,0,0,0.5); }
+  .search-dropdown { position:absolute; top:100%; left:0; right:0; background:#1e293b; border:1px solid #334155; border-radius:8px; z-index:200; overflow:hidden; max-height:240px; overflow-y:auto; margin-top:4px; box-shadow:0 8px 24px rgba(0,0,0,0.5); }
+  .search-item:hover { background:#334155; }
+  .panel-slide { animation: slideIn 0.2s ease-out; }
+  @keyframes slideIn { from { opacity:0; transform:translateX(20px); } to { opacity:1; transform:translateX(0); } }
+  .scatter-dot { cursor:pointer; transition: r 0.15s; }
+  .scatter-dot:hover { filter:brightness(1.3); }
+  .modality-siRNA { background:#1e3a5f; color:#60a5fa; }
+  .modality-ASO { background:#1e3d2a; color:#4ade80; }
+  .modality-miRNA { background:#3d1e3d; color:#c084fc; }
+  .modality-mRNA { background:#3d2a1e; color:#fb923c; }
+  .modality-其他 { background:#2a2a2a; color:#94a3b8; }
+  .stage-approved { background:#14532d; color:#86efac; }
+  .stage-ph3 { background:#1e3a5f; color:#93c5fd; }
+  .stage-ph2 { background:#2d1e3d; color:#d8b4fe; }
+  .stage-ph1 { background:#3d2d1e; color:#fbbf24; }
+  .stage-preclinical { background:#1e2a1e; color:#6ee7b7; }
+  .tab-active { background:#1e40af; color:#fff; }
+  .tab-inactive { background:#1e293b; color:#94a3b8; }
+  .tab-inactive:hover { background:#253248; color:#e2e8f0; }
+  /* Login screen */
+  .login-bg { min-height:100vh; display:flex; align-items:center; justify-content:center; background: radial-gradient(ellipse at center, #0f2040 0%, #0f1117 70%); }
+  .login-card { background:#1a1f2e; border:1px solid #1e40af66; border-radius:20px; padding:48px 44px; width:360px; box-shadow: 0 20px 60px rgba(0,0,0,0.6), 0 0 80px rgba(30,64,175,0.15); }
+  .login-input { width:100%; background:#0f1117; border:1px solid #334155; border-radius:10px; padding:12px 16px; color:#e2e8f0; font-size:15px; outline:none; box-sizing:border-box; transition:border-color 0.2s; }
+  .login-input:focus { border-color:#3b82f6; }
+  .login-btn { width:100%; background:linear-gradient(135deg,#1d4ed8,#1e40af); border:none; border-radius:10px; padding:13px; color:#fff; font-size:15px; font-weight:700; cursor:pointer; transition:opacity 0.2s; }
+  .login-btn:hover { opacity:0.88; }
+  .login-error { background:#3f1515; border:1px solid #7f1d1d; border-radius:8px; padding:8px 14px; color:#fca5a5; font-size:12px; margin-top:10px; }
+  .clinical-box { background:#0d1520; border:1px solid #1e3a5f; border-radius:8px; padding:10px 12px; margin-top:6px; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/javascript">
+var e = React.createElement;
+var useState = React.useState;
+var useEffect = React.useEffect;
+var useRef = React.useRef;
+var useMemo = React.useMemo;
+
+// ============================================================
+// DATABASE — 含临床数据字段 clinicalData
+// ============================================================
+var PIPELINES = [
+  // ── PCSK9 ──────────────────────────────────────────────
+  { id:1, name:'Inclisiran', code:'ALN-PCSsc', company:'Alnylam/Novartis', modality:'siRNA', target:'PCSK9', disease:'心血管', indication:'原发性高胆固醇血症/HeFH', stage:'已获批', peakMarketB:5.5,
+    clinicalData:'关键试验：ORION-9/10/11（n=3,660合计）；LDL-C降幅约52%（ORION-10）；每年两次皮下注射；2021年FDA批准/2020年EMA批准；ORION-4 CVOT（n=15,000+）进行中，预计2026年读出。2023年全球销售额约$4.7亿，渗透率仍低。',
+    analystView:'全球首款获批siRNA降脂药，半年一针，患者依从性优势显著。Novartis 2022年销售额约$3.6亿，市场渗透率仍低，长期空间可期。' },
+
+  { id:2, name:'Fitusiran', code:'ALN-AT3sc', company:'Alnylam/Sanofi', modality:'siRNA', target:'PCSK9', disease:'心血管', indication:'高胆固醇血症（辅助适应症）', stage:'Ph3', peakMarketB:2.0,
+    clinicalData:'注：Fitusiran主适应症为血友病（靶点为抗凝血酶AT3），此处列为PCSK9辅助探索。ATLAS B/A Ph3完成，出血预防率显著改善；2024年FDA批准血友病适应症。PCSK9联合用药方向尚无独立临床数据。',
+    analystView:'主要适应症为血友病，PCSK9方向为延伸探索，竞争压力来自Inclisiran正品。' },
+
+  { id:3, name:'AZD8233', code:'AZD8233', company:'AstraZeneca', modality:'ASO', target:'PCSK9', disease:'心血管', indication:'高胆固醇血症', stage:'Ph2', peakMarketB:3.0,
+    clinicalData:'ETESIAN Ph2研究（n=114）；月一次皮下ASO；与他汀联用LDL-C降幅约60%；安全性良好，无显著注射部位反应；Ph3设计讨论中，2024年数据公布。与Inclisiran半年给药相比，给药频率略高。',
+    analystView:'皮下注射ASO，每月给药，AZ心血管管线核心资产，与PCSK9单抗形成竞争格局。' },
+
+  { id:4, name:'OLX702A', code:'OLX702A', company:'Oligomerix', modality:'siRNA', target:'PCSK9', disease:'心血管', indication:'高胆固醇血症', stage:'临床前', peakMarketB:1.5,
+    clinicalData:'临床前阶段，灵长类动物模型中PCSK9 mRNA降低>80%，LDL-C降幅约60%；尚未启动IND申报，预计2025年进入Ph1。靶点遗传验证充分，技术平台仍处验证期。',
+    analystView:'早期siRNA资产，靶点验证充分，需关注差异化给药方式。' },
+
+  // ── Lp(a) ──────────────────────────────────────────────
+  { id:5, name:'Pelacarsen', code:'TQJ230', company:'Novartis', modality:'ASO', target:'Lp(a)', disease:'心血管', indication:'高脂蛋白(a)血症/ASCVD', stage:'Ph3', peakMarketB:8.0,
+    clinicalData:'HORIZON CVOT（n=7,680；≥70mg/dL）；月一次皮下ASO；Ph2中Lp(a)降幅约80%；主终点：MACE（心梗/卒中/冠脉死亡）；2023年完成入组；预计2025年末至2026年数据读出；若成功将申请优先审评。',
+    analystView:'Lp(a) CVOT HORIZON试验，2025年预计读出，若成功将成为里程碑资产。市场有2000万高风险患者，峰值空间极大。' },
+
+  { id:6, name:'Olpasiran', code:'AMG890', company:'Amgen', modality:'siRNA', target:'Lp(a)', disease:'心血管', indication:'高脂蛋白(a)血症', stage:'Ph3', peakMarketB:7.5,
+    clinicalData:'OCEAN(a) Ph2（n=281）：季度皮下siRNA；225mg剂量组Lp(a)降幅98%（中位），优于Pelacarsen降幅；OCEAN(a)-OUTCOMES Ph3 CVOT（n=~6,000）已启动，主终点MACE；预计2026-2027年读出。',
+    analystView:'季度给药siRNA，OCEAN(a)研究数据亮眼（Lp(a)降幅>95%）。Amgen心血管管线核心，与Pelacarsen正面竞争。' },
+
+  { id:7, name:'Zerlasiran', code:'SLN360', company:'Silence Therapeutics', modality:'siRNA', target:'Lp(a)', disease:'心血管', indication:'心血管高风险人群', stage:'Ph2', peakMarketB:5.0,
+    clinicalData:'APOLLO Ph2（n=180）：单次、季度或半年皮下注射；600mg半年给药组Lp(a)降幅81%；CVOT ALPACAR-360启动（n=3,600+）；2024年Ph2b扩展数据公布，降幅稳定，血小板及肝酶安全性良好。',
+    analystView:'Silence Therapeutics GalNAc-siRNA平台，半年一针，临床数据良好。公司市值偏小，存在被并购预期。' },
+
+  { id:8, name:'LY3819469', code:'LY3819469', company:'Eli Lilly', modality:'siRNA', target:'Lp(a)', disease:'心血管', indication:'高脂蛋白(a)血症', stage:'Ph2', peakMarketB:4.5,
+    clinicalData:'Ph2 LASSEN研究（n=~200）启动于2023年；GalNAc-siRNA季度给药；主要终点Lp(a)降幅目标>80%；2025年预计公布中期数据。Lilly通过收购Versanis进入小核酸领域，心血管销售能力强大。',
+    analystView:'Lilly通过收购Versanis进入小核酸赛道，Lp(a) siRNA是战略性布局，依托强大心血管销售渠道。' },
+
+  { id:9, name:'LRN101', code:'LRN101', company:'Lerna Therapeutics', modality:'siRNA', target:'Lp(a)', disease:'心血管', indication:'高脂蛋白(a)血症', stage:'临床前', peakMarketB:3.0,
+    clinicalData:'临床前阶段；动物模型Lp(a)前体蛋白（LPA）mRNA降低>85%；IND预计2025年申报；靶向LPA基因而非Lp(a)蛋白本身，理论上可同时影响apoB-100结合。',
+    analystView:'早期资产，Lp(a)赛道拥挤，差异化定位是关键。' },
+
+  // ── TTR ────────────────────────────────────────────────
+  { id:10, name:'Patisiran', code:'ALN-TTR02', company:'Alnylam', modality:'siRNA', target:'TTR', disease:'罕见病', indication:'hATTR多发性神经病', stage:'已获批', peakMarketB:3.2,
+    clinicalData:'APOLLO Ph3（n=225）：mNIS+7评分改善34%（vs 恶化28%），NEJM 2018；2019年FDA批准神经病；APOLLO-B（n=360）：心肌病NTproBNP/6MWT改善显著，2022年扩展获批。现逐渐过渡至Vutrisiran二线。',
+    analystView:'全球首款获批RNAi疗法，2022年获批心肌病适应症扩展。已与Vutrisiran竞争，渐进式向二线过渡。' },
+
+  { id:11, name:'Vutrisiran', code:'ALN-TTRsc02', company:'Alnylam', modality:'siRNA', target:'TTR', disease:'罕见病', indication:'hATTR多发性神经病/心肌病', stage:'已获批', peakMarketB:4.0,
+    clinicalData:'HELIOS-A Ph3（n=164）：mNIS+7改善，非劣效于Patisiran；2022年FDA批准神经病；HELIOS-B（n=655）：心肌病MACE降低28%（p<0.001），全因死亡降低36%；2024年FDA批准心肌病适应症。季度皮下给药。',
+    analystView:'皮下GalNAc-siRNA，季度给药，已获批神经病和心肌病。HELIOS-B研究心肌病数据优异，有望成为核心资产。' },
+
+  { id:12, name:'Eplontersen', code:'ION682884', company:'AstraZeneca/Ionis', modality:'ASO', target:'TTR', disease:'罕见病', indication:'hATTR多发性神经病', stage:'已获批', peakMarketB:2.5,
+    clinicalData:'NEURO-TTRansform Ph3（n=168）：TTR降幅82%，mNIS+7改善vs历史对照；月一次皮下ASO；2023年FDA批准神经病；Ionis/AZ合作商业化；心肌病适应症CARDIO-TTRansform Ph3进行中。',
+    analystView:'皮下ASO，月一针，2023年获批。与Patisiran/Vutrisiran三方竞争TTR市场，AZ销售渠道为优势。' },
+
+  { id:13, name:'ION-TTR-LRx (Next-Gen)', code:'IONIS-TTR-LRx', company:'Ionis', modality:'ASO', target:'TTR', disease:'罕见病', indication:'ATTRv/ATTRwt心肌病', stage:'Ph3', peakMarketB:2.0,
+    clinicalData:'CARDIO-TTRansform Ph3（n=1,000+）：改进型肝靶向配方，TTR降幅约85-90%；月一次皮下注射；主终点全因死亡+心血管事件；2025年完成入组；与Vutrisiran HELIOS-B直接竞争心肌病空间。',
+    analystView:'TTR稳定剂，非直接竞品，但占据市场心智。TTR ASO持续竞争中。' },
+
+  // ── HBV ────────────────────────────────────────────────
+  { id:14, name:'Bepirovirsen', code:'GSK3228836', company:'GSK/Ionis', modality:'ASO', target:'HBV', disease:'感染病', indication:'慢性乙型肝炎(HBsAg清除)', stage:'Ph3', peakMarketB:4.0,
+    clinicalData:'B-Well Ph2b（n=457）：24周治疗后HBsAg持续清除率9-10%（vs 0%安慰剂）；B-Together Ph3（n=~900）进行中；主终点：停药24周后HBsAg持续清测不到；若清除率达15%+将被视为重大突破。',
+    analystView:'B-Well研究2024年预计读出，若HBsAg持续清除率达目标，将是HBV功能性治愈重大突破。' },
+
+  { id:15, name:'VIR-2218', code:'VIR-2218', company:'Vir Biotechnology/Alnylam', modality:'siRNA', target:'HBV', disease:'感染病', indication:'慢性乙型肝炎', stage:'Ph2', peakMarketB:3.5,
+    clinicalData:'Ph2 MONARCH研究：VIR-2218联合VIR-3434（HBsAg抗体）；siRNA单药HBsAg降幅~1.5 log；联合疗法部分患者实现HBsAg清除；联合PD-1、TLR激动剂三联方案探索中；2024年Ph2b数据公布。',
+    analystView:'Vir联合疗法策略（siRNA+抗体+TLR激动剂），功能性治愈路径清晰，与GSK管线形成互补竞争。' },
+
+  { id:16, name:'AB-729', code:'AB-729', company:'Arbutus Biopharma', modality:'siRNA', target:'HBV', disease:'感染病', indication:'慢性乙型肝炎', stage:'Ph2', peakMarketB:2.5,
+    clinicalData:'Ph2 ARBUTUS-HBV（n=40）：月一次皮下GalNAc-siRNA；HBsAg降幅约1.5-2.0 log；联合NA+NVR 3-778 capsid抑制剂方案探索中；停药后反弹明显，需联合策略；2024年完整Ph2数据发布。',
+    analystView:'GalNAc-siRNA联合疗法，Arbutus核心管线，降低HBsAg数据稳健，公司估值偏低存在补涨空间。' },
+
+  { id:17, name:'RG6346', code:'RG6346', company:'Roche/Dicerna', modality:'siRNA', target:'HBV', disease:'感染病', indication:'慢性乙型肝炎', stage:'Ph2', peakMarketB:3.0,
+    clinicalData:'Ph2 RIVIERA研究：RG6346联合RG7795（PD-L1抗体）+核苷类似物三联方案；HBsAg降幅约1.5 log（RG6346单药）；联合组HBsAg清除率高于单药；Roche 2022年Dicerna收购后持续推进；2025年Ph2数据预期。',
+    analystView:'Roche凭借庞大HBV市场经验布局RNAi，联合PD-L1抗体的功能性治愈策略值得关注。' },
+
+  { id:18, name:'JNJ-3989', code:'ARO-HBV', company:'J&J/Arrowhead', modality:'siRNA', target:'HBV', disease:'感染病', indication:'慢性乙型肝炎', stage:'Ph3', peakMarketB:4.5,
+    clinicalData:'REEF-1 Ph2（n=70）：每月皮下siRNA，HBsAg降幅1.5-2.5 log，联合JNJ-6379（capsid抑制剂）组23%实现HBsAg清除；REEF-2 Ph3（n=~450）进行中；CORAL-1研究长期治疗策略；2025年Ph3 中期数据预期。',
+    analystView:'J&J大力推进，联合疗法策略，是最接近HBV功能性治愈的管线之一，市场预期较高。' },
+
+  // ── APOC3 ──────────────────────────────────────────────
+  { id:19, name:'Volanesorsen', code:'ISIS-APOCIIIRx', company:'Ionis/Akcea', modality:'ASO', target:'APOC3', disease:'心血管', indication:'家族性乳糜微粒血症综合征(FCS)', stage:'已获批', peakMarketB:0.8,
+    clinicalData:'APPROACH Ph3（n=66）：甘油三酯降幅77%（vs +18%安慰剂），急性胰腺炎发作减少；2019年EMA批准，FDA因血小板减少安全信号未批；监测方案下欧洲上市；年费约€400,000/年。',
+    analystView:'孤儿药，获批欧盟/加拿大，FDA未批（血小板毒性问题）。FCS患者数少，市场规模有限。' },
+
+  { id:20, name:'Olezarsen', code:'AKCEA-APOCIII-LRx', company:'Ionis', modality:'ASO', target:'APOC3', disease:'心血管', indication:'高甘油三酯血症/FCS', stage:'Ph3', peakMarketB:2.5,
+    clinicalData:'BALANCE Ph3（n=~2,000）：改进版LRx配方，TG降幅>60%，无血小板毒性；FCS和svHTG两个适应症同步推进；BALANCE-FCS（n=~80）Ph3已完成，2024年NDA申报；TG降幅与心血管终点相关性分析进行中。',
+    analystView:'改进版本，BALANCE研究心血管结局待读出，甘油三酯降幅>60%，有望拓展至更广人群。' },
+
+  { id:21, name:'ARO-APOC3', code:'ARO-APOC3', company:'Arrowhead Pharmaceuticals', modality:'siRNA', target:'APOC3', disease:'心血管', indication:'高甘油三酯血症', stage:'Ph3', peakMarketB:3.0,
+    clinicalData:'PALISADE Ph3（n=~200 FCS患者）：每季度皮下GalNAc-siRNA；Ph2中TG降幅>70%（vs安慰剂-14%）；无显著血小板副作用；2024年完成入组；J&J合作里程碑付款$5亿+；2025年顶线数据预期；svHTG扩展适应症启动。',
+    analystView:'Arrowhead核心资产，J&J授权合作，PALISADE研究进行中，GalNAc-siRNA季度给药竞争优势明显。' },
+
+  // ── ANGPTL3 ────────────────────────────────────────────
+  { id:22, name:'Zodasiran', code:'ARO-ANG3', company:'Arrowhead', modality:'siRNA', target:'ANGPTL3', disease:'心血管', indication:'高脂血症/HoFH', stage:'Ph3', peakMarketB:3.5,
+    clinicalData:'SHASTA-2 Ph2（n=204）：TG降幅68%，LDL-C降幅23%，HDL升高22%；GATEWAY Ph3（n=~240 HoFH/混合型高脂血症）进行中；J&J合作付款约$7亿+；每季度给药；2025年Ph3数据预期；与Evinacumab单抗竞争HoFH。',
+    analystView:'Arrowhead与J&J合作，SHASTA研究结果良好，ANGPTL3抑制可降低TG+LDL，适应症覆盖广。' },
+
+  { id:23, name:'Vupanorsen', code:'AKCEA-ANGPTL3-LRx', company:'Ionis/Pfizer', modality:'ASO', target:'ANGPTL3', disease:'心血管', indication:'高甘油三酯血症', stage:'Ph2', peakMarketB:1.5,
+    clinicalData:'BROADEN Ph2b（n=286）：TG降幅27-60%（剂量依赖），但LDL-C降幅不一致；肝酶轻度升高；Pfizer 2022年终止合作并退还权利；Ionis持续内部推进，差异化方向未明。数据显示ASO路径面临siRNA竞争劣势。',
+    analystView:'Pfizer已停止合作，Ionis持续推进，ASO路径面临siRNA竞争压力，方向存疑。' },
+
+  { id:24, name:'IONIS-ANGPTL3-LRx', code:'IONIS-ANGPTL3-LRx', company:'Ionis', modality:'ASO', target:'ANGPTL3', disease:'心血管', indication:'动脉硬化性心血管病', stage:'Ph2', peakMarketB:2.0,
+    clinicalData:'Ph2 TRANSLATE研究进行中（n=~150）；月一次皮下LRx增强ASO；TG+LDL双降目标；与ARO-ANG3不同的机制切入角（强化肝靶向性）；商业化合作尚未确定；2025年Ph2数据公布预期。',
+    analystView:'Ionis内部推进，肝靶向ASO配方，与ARO-ANG3同台竞争，商业化合作待确定。' },
+
+  // ── AGT ────────────────────────────────────────────────
+  { id:25, name:'Zilebesiran', code:'ALN-AGT01', company:'Alnylam/Roche', modality:'siRNA', target:'AGT', disease:'心血管', indication:'高血压', stage:'Ph3', peakMarketB:12.0,
+    clinicalData:'KARDIA-1 Ph2（n=394）：半年一次皮下siRNA；联合标准降压药SBP额外降低14 mmHg（最大剂量组）；KARDIA-2 Ph2b（n=730）SBP降幅12 mmHg vs安慰剂（主终点达成，p<0.001）；KARDIA-3 Ph3 CVOT（n=~12,000）启动；Roche $35亿授权。',
+    analystView:'全球首款降压siRNA，半年一针，KARDIA-2研究显示降压效果显著。高血压患者基数10亿+，若获批市场空间巨大，Roche 35亿美元授权金彰显信心。' },
+
+  { id:26, name:'ION839', code:'ION839', company:'Ionis', modality:'ASO', target:'AGT', disease:'心血管', indication:'高血压', stage:'Ph1', peakMarketB:5.0,
+    clinicalData:'Ph1剂量递增研究进行中（n=~30）；肝靶向LRx配方月一次皮下注射；初步数据显示血浆AGT降幅>60%；SBP降幅与剂量相关；预计2025年Ph2启动；与Zilebesiran形成ASO vs siRNA直接竞争。',
+    analystView:'Ionis进入AGT赛道，ASO路径PK siRNA，给药频率和依从性是关键差异点。' },
+
+  // ── FXI ────────────────────────────────────────────────
+  { id:27, name:'Fesomersen', code:'IONIS-FXIRx', company:'Ionis/Bayer', modality:'ASO', target:'FXI', disease:'血液病', indication:'抗凝治疗（房颤/ESRD）', stage:'Ph3', peakMarketB:5.0,
+    clinicalData:'Ph2 ENVISAGE（n=179，终末期肾病）：FXI降幅82%，VTE减少90%，出血风险不增加；OCEANIC-AF Ph3（n=~14,000）vs Apixaban；Bayer $10亿授权；2023年中期安全性良好；预计2025年主终点数据；FXI靶点出血安全优势显著。',
+    analystView:'FXI靶点出血风险低于传统抗凝药，Bayer 10亿美元授权，OCEANIC-AF研究有望2025年读出，竞争对手包括辉瑞Abelacimab。' },
+
+  { id:28, name:'Abelacimab', code:'MAA868', company:'Pfizer', modality:'ASO', target:'FXI', disease:'血液病', indication:'房颤抗凝', stage:'Ph3', peakMarketB:4.0,
+    clinicalData:'注：Abelacimab为FXIa单克隆抗体，非小核酸，此处列为FXI靶点竞品参照。ASTER-AF Ph3（n=~1,600）进行中；月一次皮下注射；LILAC-AF安全性数据：颅内出血减少vs传统抗凝；与Fesomersen竞争同一靶点市场。',
+    analystView:'FXI单抗竞品，非小核酸，但竞争FXI市场空间。' },
+
+  { id:29, name:'ARO-FXI', code:'ARO-FXI', company:'Arrowhead', modality:'siRNA', target:'FXI', disease:'血液病', indication:'抗凝治疗', stage:'Ph2', peakMarketB:4.5,
+    clinicalData:'Ph2 AMPLITUDE研究（n=~120）：每季度皮下GalNAc-siRNA；单次注射FXI蛋白降幅>90%，持续约6个月；Ph2完整数据2024年ASH大会公布；无显著出血事件；Ph3设计中，与Fesomersen形成ASO vs siRNA差异化竞争。',
+    analystView:'GalNAc-siRNA抗凝，季度给药，差异化竞争Ionis ASO，Arrowhead心血管布局重要组成。' },
+
+  // ── HSD17B13 ───────────────────────────────────────────
+  { id:30, name:'ARO-HSD', code:'ARO-HSD', company:'Arrowhead', modality:'siRNA', target:'HSD17B13', disease:'肝脏代谢', indication:'NASH/代谢相关脂肪性肝病(MASH)', stage:'Ph2', peakMarketB:4.0,
+    clinicalData:'SYMMETRY Ph2b（n=~280）：每季度皮下GalNAc-siRNA；liver fat（MRI-PDFF）降幅约30-40%，组织学改善NAS评分；I148M变异携带者与非携带者疗效相当；与GLP-1联用协同效应探索；2024年完整数据；J&J合作里程碑付款约$6亿。',
+    analystView:'MASH市场火热，HSD17B13遗传验证靶点。Arrowhead联合疗法策略，与GLP-1类药物联用潜力大。' },
+
+  { id:31, name:'IONIS-HSD17B13-LRx', code:'IONIS-HSD17B13-LRx', company:'Ionis', modality:'ASO', target:'HSD17B13', disease:'肝脏代谢', indication:'NASH/MASH', stage:'Ph2', peakMarketB:3.5,
+    clinicalData:'Ph2研究（n=~100）：月一次皮下LRx-ASO；ALT/AST下降>50%，MRI-PDFF肝脏脂肪减少约25-35%；活检亚组NAS改善（数据2024年AASLD大会公布）；无胰岛素抵抗或体重变化；与ARO-HSD直接竞争MASH空间。',
+    analystView:'Ionis MASH布局，与ARO-HSD同赛道竞争，ASO路径月一针给药，临床差异化证明是关键。' },
+
+  // ── SERPINA1 ───────────────────────────────────────────
+  { id:32, name:'ARO-AAT', code:'ARO-AAT', company:'Arrowhead/J&J', modality:'siRNA', target:'SERPINA1', disease:'罕见病', indication:'α1-抗胰蛋白酶缺乏症相关肝病', stage:'Ph3', peakMarketB:3.0,
+    clinicalData:'SEQUOIA Ph3（n=~120 PiZZ患者）：每月皮下GalNAc-siRNA；Z-AAT蛋白降幅>90%，肝活检纤维化改善（Ishak评分）；REDWOOD 2期安全性良好；2024年向FDA提交NDA；获优先审评资格；J&J合作总里程碑付款约$11亿。',
+    analystView:'J&J授权，SEQUOIA研究，针对PIZZ患者肝脏Z-AAT蓄积，GalNAc-siRNA降低毒性蛋白，2024年有望提交NDA。' },
+
+  { id:33, name:'Fazirsiran', code:'ARC-AAT', company:'Ionis/AZ', modality:'ASO', target:'SERPINA1', disease:'罕见病', indication:'A1ATD肝病', stage:'Ph3', peakMarketB:2.5,
+    clinicalData:'SEQUOIA-C Ph3（n=~80 PiZZ患者）：月一次皮下ASO（原ARC-AAT更名）；Z-AAT降幅~80-85%；肝活检改善率约45%（纤维化改善≥1级）；AZ商业化；与ARO-AAT形成同靶点ASO vs siRNA竞争；2025年数据读出预期。',
+    analystView:'Ionis/AZ共同推进，皮下ASO，与ARO-AAT正面竞争，A1ATD患者约20万，孤儿药资格。' },
+
+  // ── SOD1（ALS） ─────────────────────────────────────────
+  { id:34, name:'Tofersen', code:'BIIB067', company:'Biogen/Ionis', modality:'ASO', target:'SOD1', disease:'神经退行', indication:'SOD1-ALS', stage:'已获批', peakMarketB:0.8,
+    clinicalData:'VALOR Ph3（n=108）：28周鞘内注射ASO；主终点ALSFRS-R未达（可能因试验短暂）；血浆NfL（神经丝轻链）降幅60%；SOD1蛋白降低50%；2023年FDA加速批准；ATLAS延伸研究：生存获益趋势；年费约$22万。',
+    analystView:'2023年FDA加速批准，ALS领域首个靶向ASO疗法。患者群体约2%携带SOD1突变，市场较小但意义重大。' },
+
+  { id:35, name:'WVE-004', code:'WVE-004', company:'Wave Life Sciences', modality:'ASO', target:'SOD1', disease:'神经退行', indication:'C9orf72-ALS/FTD', stage:'Ph1/2', peakMarketB:1.5,
+    clinicalData:'FOCUS Ph1/2（n=~30）：鞘内注射立体化学ASO；靶向C9orf72扩张重复序列；CSF中突变C9 RNA降幅~50%（vs野生型保留）；NfL稳定化趋势；2024年中期数据公布；ALS中C9orf72突变频率约25-40%，是最重要突变之一。',
+    analystView:'Wave精准立体化学ASO，靶向C9orf72扩张重复序列，ALS中最常见突变。数据早期但选择性降低突变等位基因概念有吸引力。' },
+
+  // ── HTT ────────────────────────────────────────────────
+  { id:36, name:'Tominersen', code:'RO7234292', company:'Roche/Ionis', modality:'ASO', target:'HTT', disease:'神经退行', indication:'亨廷顿舞蹈病', stage:'Ph2（重启）', peakMarketB:3.0,
+    clinicalData:'GENERATION-HD1 Ph3（n=791）：2021年因无效停止（高剂量组可能恶化）；脑脊液HTT降幅>70%，但功能评分未改善；POST-HD1分析：年轻/早期患者趋势获益；剂量优化Ph2 GENERATION-HD1b（n=~360）：低剂量方案，2025年数据预期。',
+    analystView:'2021年因无效停止Ph3，剂量优化后重启Ph2。亨廷顿患者约3万，若成功将是重磅，Roche坚持投入体现信心。' },
+
+  { id:37, name:'WVE-003', code:'WVE-003', company:'Wave Life Sciences', modality:'ASO', target:'HTT', disease:'神经退行', indication:'亨廷顿舞蹈病（仅降突变型）', stage:'Ph1/2', peakMarketB:2.5,
+    clinicalData:'SELECT-HD Ph1/2（n=~40）：鞘内立体化学ASO；选择性降低mutant HTT（mHTT），保留野生型HTT；CSF mHTT降幅约45%，野生型HTT基本保留；2024年EHDN大会数据：安全性良好，无严重不良事件；携带SNP rs362307患者适用（~50%患者）。',
+    analystView:'选择性降低突变型HTT而保留野生型，Wave立体化学平台优势体现，概念先进但执行难度高。' },
+
+  { id:38, name:'AMT-130', code:'AMT-130', company:'uniQure', modality:'miRNA', target:'HTT', disease:'神经退行', indication:'亨廷顿舞蹈病', stage:'Ph1/2', peakMarketB:2.0,
+    clinicalData:'Ph1/2（n=~26）：单次颅内立体定向注射AAV5-miRNA；CSF中HTT降幅约90%（双侧）；NfL升高后恢复基线（注射损伤相关）；Q-Motor和认知指标稳定化；最低有效剂量组分析2024年发布；若成功一次给药可终身有效。',
+    analystView:'AAV5递送miRNA，一次性脑内注射，单次给药理论上终身有效。给药方式创新但手术风险高，定价策略是关键。' },
+
+  // ── MAPT ───────────────────────────────────────────────
+  { id:39, name:'BIIB080', code:'BIIB080', company:'Biogen/Ionis', modality:'ASO', target:'MAPT', disease:'神经退行', indication:'阿尔茨海默病/PSP', stage:'Ph2', peakMarketB:8.0,
+    clinicalData:'Ph1b（n=46 AD患者）：鞘内ASO；CSF中总tau降幅约60%，磷酸化tau（p-tau217）降幅约50%；认知指标早期稳定化趋势；Ph2 CELIA研究（n=~400早期AD）进行中，联合Lecanemab探索；2025年中期数据。AD市场空间>$100B/年。',
+    analystView:'tau ASO，鞘内注射，MAPT降低是AD差异化策略。AD市场空间巨大，与Lecanemab/amyloid路径形成互补，高潜力高风险。' },
+
+  { id:40, name:'NIO752', code:'NIO752', company:'Novartis/Ionis', modality:'ASO', target:'MAPT', disease:'神经退行', indication:'PSP/AD', stage:'Ph1/2', peakMarketB:4.0,
+    clinicalData:'Ph1/2 EPISODIC研究（n=~60 PSP患者）：鞘内ASO；CSF tau降幅约55-65%；PSP-Rating Scale稳定化趋势；孤儿药资格（PSP）；2024年数据公布；PSP目前无批准疗法，unmet need极高；AD适应症扩展规划中。',
+    analystView:'Novartis押注tau降低策略，与BIIB080竞争MAPT空间，PSP孤儿药资格有望加速审批。' },
+
+  // ── PNPLA3 ─────────────────────────────────────────────
+  { id:41, name:'ARO-PNPLA3', code:'ARO-PNPLA3', company:'Arrowhead', modality:'siRNA', target:'PNPLA3', disease:'肝脏代谢', indication:'PNPLA3 I148M相关MASH', stage:'Ph2', peakMarketB:3.5,
+    clinicalData:'PMAL Ph2b（n=~100 I148M携带者）：每季度皮下GalNAc-siRNA；PNPLA3 I148M蛋白降幅>90%；MRI-PDFF肝脂肪减少约38%（vs安慰剂8%）；ALT降幅50%+；I148M纯合子患者效果更显著；精准医疗分层策略，2025年数据。',
+    analystView:'精准医疗策略，针对携带PNPLA3 I148M风险变异的MASH患者，患者筛选使商业化更复杂，但差异化定位清晰。' },
+
+  // ── ALAS1 ──────────────────────────────────────────────
+  { id:42, name:'Givosiran', code:'ALN-AS1', company:'Alnylam', modality:'siRNA', target:'ALAS1', disease:'罕见病', indication:'急性肝卟啉症(AHP)', stage:'已获批', peakMarketB:1.5,
+    clinicalData:'ENVISION Ph3（n=94）：每月皮下GalNAc-siRNA；急性发作率降低74%（vs安慰剂）；疼痛评分显著改善；ALAS1 mRNA降幅>80%；2019年FDA批准；NEJM 2020；年费约$57万；Alnylam商业化成功案例，2023年收入约$2.9亿。',
+    analystView:'2019年获批，AHP孤儿药，年费约$57万。Alnylam商业化成功案例，证明罕见病siRNA商业可行性。' },
+
+  // ── C5 ─────────────────────────────────────────────────
+  { id:43, name:'Cemdisiran', code:'ALN-CC5', company:'Alnylam', modality:'siRNA', target:'C5', disease:'罕见病', indication:'阵发性睡眠性血红蛋白尿(PNH)/aHUS', stage:'Ph2', peakMarketB:3.0,
+    clinicalData:'Ph2 ALCHEMY研究（n=~60 PNH）：月一次皮下siRNA联合Cetuximab（月一次抗C5 mAb）；C5抑制率>90%持续，LDH正常化>80%；vs 单药Eculizumab（双周静脉）便利性大幅提升；2024年数据公布；aHUS适应症扩展研究规划中。',
+    analystView:'与Cetuximab联合用药策略，每月皮下注射替代静脉抗C5抗体，患者便利性大幅提升，临床组合策略有创新性。' },
+
+  // ── HAO1（原发性高草酸尿症） ───────────────────────────
+  { id:44, name:'Nedosiran', code:'DCR-PHXC', company:'Dicerna/Novo Nordisk', modality:'siRNA', target:'HAO1', disease:'血液病', indication:'原发性高草酸尿症(PH1/PH2)', stage:'已获批', peakMarketB:1.2,
+    clinicalData:'PHYOX3 Ph3（n=~80 PH1/PH2）：月一次皮下GalNAc-siRNA；24h尿草酸减少约41%（vs安慰剂增加12%）；2023年FDA批准PH1；PH2适应症扩展研究进行中；Novo Nordisk 2021年收购Dicerna后推进；年费约$45万；与Lumasiran争夺PH市场。',
+    analystView:'2023年获批，靶向甘醇酸盐氧化酶(GO)的首个RNAi，Novo Nordisk收购Dicerna后推进，孤儿药定价高。' },
+
+  { id:45, name:'Lumasiran', code:'ALN-GO1', company:'Alnylam', modality:'siRNA', target:'HAO1', disease:'罕见病', indication:'原发性高草酸尿症1型(PH1)', stage:'已获批', peakMarketB:0.9,
+    clinicalData:'ILLUMINATE-A（成人/儿童，n=39）：24h尿草酸降幅65%；ILLUMINATE-B（婴儿，n=18）：草酸降幅72%；ILLUMINATE-C（晚期肾功能不全，n=21）：血浆草酸降幅33%；2020年FDA批准；皮下注射季度维持；Alnylam 2023年收入约$0.7亿。',
+    analystView:'2020年获批，Alnylam孤儿病资产，GalNAc-siRNA皮下注射，与Nedosiran形成PH市场竞争。' },
+
+  // ── TTR 额外 ───────────────────────────────────────────
+  { id:46, name:'ION682884-CS1', code:'ION-TTR-LRx', company:'Ionis', modality:'ASO', target:'TTR', disease:'罕见病', indication:'ATTR心肌病', stage:'Ph2', peakMarketB:3.0,
+    clinicalData:'Ph2 CARDIO-TTRansform支线（n=~80）：月一次皮下LRx-ASO改进配方；TTR降幅85-90%；NTproBNP及6MWT改善趋势；2024年中期数据发布，与Vutrisiran HELIOS-B数据直接对比；AZ联合商业化谈判进行中；竞争已获批Vutrisiran/Eplontersen。',
+    analystView:'Ionis下一代TTR ASO，肝靶向增强配方，竞争Vutrisiran/Eplontersen，AZ商业化合作待定。' },
+
+  // ── STAT3 ──────────────────────────────────────────────
+  { id:47, name:'Danvatirsen', code:'AZD9150', company:'AstraZeneca/Ionis', modality:'ASO', target:'STAT3', disease:'肿瘤', indication:'弥漫大B细胞淋巴瘤/胰腺癌', stage:'Ph2', peakMarketB:4.0,
+    clinicalData:'Ph2 MEDI研究（DLBCL联合Durvalumab，n=~80）：ORR 17%（单药DLBCL），联合PD-L1组ORR 25-30%；胰腺癌联合化疗Ph2 ORR约35%；静脉注射ASO（肿瘤靶向）；STAT3降幅>70%（肿瘤活检）；2024年ASCO数据公布；持续免疫组合策略探索。',
+    analystView:'免疫检查点联合策略，与PD-L1抗体Durvalumab联用，STAT3降低可增强肿瘤免疫应答，AZ肿瘤线战略布局。' },
+
+  // ── miR-21 ─────────────────────────────────────────────
+  { id:48, name:'Lademirsen', code:'RG-012', company:'Regulus/Sanofi', modality:'miRNA', target:'miR-21', disease:'罕见病', indication:'Alport综合征', stage:'Ph2', peakMarketB:1.5,
+    clinicalData:'HERA Ph2（n=~40 Alport综合征）：月一次皮下抗miR-21 ASO；尿蛋白肌酐比（UPCR）改善趋势（未达统计显著性）；eGFR下降速率减缓；Sanofi 2022年退出合作；Regulus继续推进，探索联合RAAS抑制剂策略；Alport孤儿药资格；2025年Ph2b数据。',
+    analystView:'miR-21是促纤维化miRNA，抑制后减少肾脏纤维化。Regulus专注miRNA治疗，小众罕见病策略，Sanofi已退出合作。' },
+
+  // ── RAGE（肿瘤） ────────────────────────────────────────
+  { id:49, name:'ARO-RAGE', code:'ARO-RAGE', company:'Arrowhead', modality:'siRNA', target:'RAGE', disease:'肿瘤', indication:'胰腺癌', stage:'Ph1', peakMarketB:2.0,
+    clinicalData:'Ph1剂量递增研究（n=~20）：静脉注射GalNAc-siRNA；RAGE蛋白降幅>70%（肿瘤活检）；DLT未达，最大耐受剂量确定中；联合吉西他滨/白蛋白紫杉醇扩展队列启动；2024年ASCO摘要公布；胰腺癌5年生存率<12%，unmet need极高。',
+    analystView:'ARO-RAGE靶向晚期糖基化终末产物受体，肿瘤微环境调控，早期临床，Arrowhead肿瘤管线探索性布局。' },
+
+  // ── ANGPTL3（孤儿病） ──────────────────────────────────
+  { id:50, name:'IONIS-ANGPTL3-LRxS', code:'IONIS-ANGPTL3', company:'Ionis', modality:'ASO', target:'ANGPTL3', disease:'心血管', indication:'HoFH/纯合子家族性高胆固醇血症', stage:'Ph1', peakMarketB:1.0,
+    clinicalData:'Ph1剂量递增（n=~20 HoFH患者）：月一次皮下LRx-ASO；ANGPTL3降幅>75%，LDL-C降幅约35-45%（HoFH中属优异表现）；TG降幅约50%；安全性良好，无肝酶升高；2024年Ph1完成，Ph2启动规划中；HoFH全球患者约1-2万，孤儿药定价策略可期。',
+    analystView:'孤儿病适应症优先，HoFH患者极少，孤儿药定价策略可期，但市场天花板明显有限。' }
+];
+
+// ============================================================
+// HELPER COMPUTATIONS
+// ============================================================
+function computeTargetStats() {
+  var map = {};
+  PIPELINES.forEach(function(p) {
+    var t = p.target;
+    if (!map[t]) {
+      map[t] = { target: t, count: 0, peakMarket: 0, disease: p.disease, pipelines: [] };
+    }
+    map[t].count += 1;
+    if (p.peakMarketB > map[t].peakMarket) map[t].peakMarket = p.peakMarketB;
+    map[t].pipelines.push(p);
+  });
+  return Object.values(map);
+}
+
+var TARGET_STATS = computeTargetStats();
+
+var DISEASE_COLORS = {
+  '心血管': '#3b82f6',
+  '罕见病': '#a855f7',
+  '感染病': '#10b981',
+  '神经退行': '#f59e0b',
+  '肝脏代谢': '#f97316',
+  '血液病': '#ef4444',
+  '肿瘤': '#ec4899',
+};
+
+function stageClass(s) {
+  if (s === '已获批') return 'stage-approved';
+  if (s.indexOf('Ph3') > -1) return 'stage-ph3';
+  if (s.indexOf('Ph2') > -1) return 'stage-ph2';
+  if (s.indexOf('Ph1') > -1) return 'stage-ph1';
+  return 'stage-preclinical';
+}
+function modalityClass(m) {
+  if (m === 'siRNA') return 'modality-siRNA';
+  if (m === 'ASO') return 'modality-ASO';
+  if (m === 'miRNA') return 'modality-miRNA';
+  if (m === 'mRNA') return 'modality-mRNA';
+  return 'modality-其他';
+}
+
+// ============================================================
+// LOGIN SCREEN
+// ============================================================
+function LoginScreen(props) {
+  var onAuth = props.onAuth;
+  var _pw = useState(''); var pw = _pw[0]; var setPw = _pw[1];
+  var _err = useState(false); var err = _err[0]; var setErr = _err[1];
+  var _vis = useState(false); var vis = _vis[0]; var setVis = _vis[1];
+
+  function handleSubmit(evt) {
+    if (evt && evt.preventDefault) evt.preventDefault();
+    if (pw === '2002122zou') {
+      onAuth();
+    } else {
+      setErr(true);
+      setPw('');
+      setTimeout(function() { setErr(false); }, 2500);
+    }
+  }
+
+  return e('div', { className:'login-bg' },
+    e('div', { className:'login-card' },
+      // Logo
+      e('div', { style:{textAlign:'center', marginBottom:32} },
+        e('div', { style:{fontSize:48, marginBottom:12} }, '🧬'),
+        e('div', { style:{fontSize:20, fontWeight:'800', color:'#e2e8f0', letterSpacing:'-0.5px'} }, '小核酸在研管线数据库'),
+        e('div', { style:{fontSize:12, color:'#475569', marginTop:6} }, 'Small Nucleic Acid Pipeline Intelligence')
+      ),
+      // Form
+      e('form', { onSubmit:handleSubmit },
+        e('div', { style:{marginBottom:8, fontSize:12, color:'#64748b'} }, '访问密码'),
+        e('div', { style:{position:'relative', marginBottom:16} },
+          e('input', {
+            type: vis ? 'text' : 'password',
+            value: pw,
+            onChange: function(ev) { setPw(ev.target.value); },
+            placeholder: '请输入访问密码',
+            className: 'login-input',
+            autoFocus: true,
+          }),
+          e('button', {
+            type:'button',
+            onClick: function() { setVis(!vis); },
+            style:{ position:'absolute', right:12, top:'50%', transform:'translateY(-50%)', background:'none', border:'none', color:'#64748b', cursor:'pointer', fontSize:16, padding:0 }
+          }, vis ? '🙈' : '👁')
+        ),
+        err ? e('div', { className:'login-error' }, '❌ 密码错误，请重试') : null,
+        e('button', { type:'submit', className:'login-btn', style:{marginTop: err ? 12 : 0} }, '进入数据库 →')
+      ),
+      e('div', { style:{marginTop:24, textAlign:'center', fontSize:11, color:'#334155'} },
+        '数据仅供参考，不构成投资建议'
+      )
+    )
+  );
+}
+
+// ============================================================
+// SCATTER PLOT
+// ============================================================
+function ScatterPlot(props) {
+  var onSelect = props.onSelect;
+  var selected = props.selected;
+  var _hov = useState(null); var hovTarget = _hov[0]; var setHovTarget = _hov[1];
+  var _pos = useState({x:0,y:0}); var tooltipPos = _pos[0]; var setTooltipPos = _pos[1];
+
+  var W = 560, H = 400;
+  var pL = 60, pR = 40, pT = 30, pB = 55;
+  var cW = W - pL - pR;
+  var cH = H - pT - pB;
+  var maxX = 6; var minX = 0;
+  var maxY = 14; var minY = 0;
+  var medX = 3; var medY = 8;
+
+  function scX(v) { return pL + (v - minX) / (maxX - minX) * cW; }
+  function scY(v) { return pT + (1 - (v - minY) / (maxY - minY)) * cH; }
+
+  var gridX = [1,2,3,4,5,6];
+  var gridY = [0,2,4,6,8,10,12,14];
+  var qMX = scX(medX);
+  var qMY = scY(medY);
+
+  var dots = TARGET_STATS.map(function(ts) {
+    return { ts:ts, cx:scX(Math.min(ts.count,6)), cy:scY(Math.min(ts.peakMarket,14)), r:8+ts.count*2.5, color:DISEASE_COLORS[ts.disease]||'#94a3b8' };
+  });
+
+  function handleMouseMove(evt, ts) {
+    var rect = evt.currentTarget.closest('svg').getBoundingClientRect();
+    setTooltipPos({ x: evt.clientX - rect.left + 12, y: evt.clientY - rect.top - 40 });
+    setHovTarget(ts);
+  }
+  function handleMouseLeave() { setHovTarget(null); }
+
+  var children = [];
+  children.push(e('rect',{key:'q-tl',x:pL,y:pT,width:qMX-pL,height:qMY-pT,fill:'#1e3a5f',opacity:0.18}));
+  children.push(e('rect',{key:'q-tr',x:qMX,y:pT,width:pL+cW-qMX,height:qMY-pT,fill:'#14532d',opacity:0.22}));
+  children.push(e('rect',{key:'q-bl',x:pL,y:qMY,width:qMX-pL,height:pT+cH-qMY,fill:'#1e293b',opacity:0.2}));
+  children.push(e('rect',{key:'q-br',x:qMX,y:qMY,width:pL+cW-qMX,height:pT+cH-qMY,fill:'#2d1e00',opacity:0.18}));
+  children.push(e('text',{key:'ql-tl',x:pL+8,y:pT+16,fontSize:10,fill:'#60a5fa',opacity:0.7},'蓝海机遇'));
+  children.push(e('text',{key:'ql-tr',x:qMX+8,y:pT+16,fontSize:10,fill:'#4ade80',opacity:0.7},'明星赛道'));
+  children.push(e('text',{key:'ql-bl',x:pL+8,y:pT+cH-8,fontSize:10,fill:'#94a3b8',opacity:0.6},'早期探索'));
+  children.push(e('text',{key:'ql-br',x:qMX+8,y:pT+cH-8,fontSize:10,fill:'#fb923c',opacity:0.7},'竞争赛道'));
+  gridX.forEach(function(v){
+    children.push(e('line',{key:'gx'+v,x1:scX(v),y1:pT,x2:scX(v),y2:pT+cH,stroke:'#334155',strokeWidth:1,strokeDasharray:'3,3'}));
+    children.push(e('text',{key:'gxl'+v,x:scX(v),y:pT+cH+14,fontSize:10,fill:'#64748b',textAnchor:'middle'},v+''));
+  });
+  gridY.forEach(function(v){
+    children.push(e('line',{key:'gy'+v,x1:pL,y1:scY(v),x2:pL+cW,y2:scY(v),stroke:'#334155',strokeWidth:1,strokeDasharray:'3,3'}));
+    children.push(e('text',{key:'gyl'+v,x:pL-6,y:scY(v)+4,fontSize:10,fill:'#64748b',textAnchor:'end'},v+'B'));
+  });
+  children.push(e('line',{key:'medx',x1:qMX,y1:pT,x2:qMX,y2:pT+cH,stroke:'#475569',strokeWidth:1.5,strokeDasharray:'6,3'}));
+  children.push(e('line',{key:'medy',x1:pL,y1:qMY,x2:pL+cW,y2:qMY,stroke:'#475569',strokeWidth:1.5,strokeDasharray:'6,3'}));
+  children.push(e('line',{key:'ax',x1:pL,y1:pT+cH,x2:pL+cW,y2:pT+cH,stroke:'#475569',strokeWidth:1.5}));
+  children.push(e('line',{key:'ay',x1:pL,y1:pT,x2:pL,y2:pT+cH,stroke:'#475569',strokeWidth:1.5}));
+  children.push(e('text',{key:'ax-label',x:pL+cW/2,y:H-4,fontSize:11,fill:'#94a3b8',textAnchor:'middle'},'同靶点在研管线数量'));
+  children.push(e('text',{key:'ay-label',x:10,y:pT+cH/2,fontSize:11,fill:'#94a3b8',textAnchor:'middle',transform:'rotate(-90,10,'+(pT+cH/2)+')'},'靶点峰值市场 ($B)'));
+  dots.forEach(function(d){
+    var isSelected = selected && selected.target === d.ts.target;
+    var isHov = hovTarget && hovTarget.target === d.ts.target;
+    children.push(e('circle',{key:'dot-'+d.ts.target,className:'scatter-dot',cx:d.cx,cy:d.cy,r:isSelected?d.r+3:d.r,fill:d.color,opacity:isSelected||isHov?1:0.75,stroke:isSelected?'#fff':(isHov?'#e2e8f0':'transparent'),strokeWidth:isSelected?2.5:1.5,onMouseMove:function(evt){handleMouseMove(evt,d.ts);},onMouseLeave:handleMouseLeave,onClick:function(){onSelect(d.ts);}}));
+    if(isSelected||isHov||d.ts.count>=3){
+      children.push(e('text',{key:'lbl-'+d.ts.target,x:d.cx,y:d.cy-d.r-4,fontSize:9,fill:isSelected?'#fff':'#cbd5e1',textAnchor:'middle',pointerEvents:'none',fontWeight:isSelected?'700':'400'},d.ts.target));
+    }
+  });
+  if(hovTarget){
+    children.push(e('foreignObject',{key:'tooltip',x:tooltipPos.x,y:tooltipPos.y,width:200,height:90,style:{overflow:'visible'}},
+      e('div',{xmlns:'http://www.w3.org/1999/xhtml',className:'tooltip-box'},
+        e('div',{style:{fontWeight:'700',fontSize:13,color:'#e2e8f0',marginBottom:4}},hovTarget.target),
+        e('div',{style:{fontSize:11,color:'#94a3b8'}},'在研管线：',e('span',{style:{color:'#60a5fa',fontWeight:'600'}},hovTarget.count+' 条')),
+        e('div',{style:{fontSize:11,color:'#94a3b8'}},'峰值市场：',e('span',{style:{color:'#4ade80',fontWeight:'600'}},'$'+hovTarget.peakMarket+'B')),
+        e('div',{style:{fontSize:11,color:'#94a3b8'}},'疾病领域：',e('span',{style:{color:DISEASE_COLORS[hovTarget.disease]||'#94a3b8',fontWeight:'600'}},hovTarget.disease))
+      )
+    ));
+  }
+  return e('svg',{width:'100%',viewBox:'0 0 '+W+' '+H,style:{display:'block',maxWidth:'100%'}},children);
+}
+
+// ============================================================
+// PIPELINE CARD — 含临床数据
+// ============================================================
+function PipelineCard(props) {
+  var p = props.pipeline;
+  var _exp = useState(false); var expanded = _exp[0]; var setExpanded = _exp[1];
+
+  return e('div', { className:'card-bg rounded-lg p-4 card-hover', style:{marginBottom:10, cursor:'pointer'}, onClick:function(){setExpanded(!expanded);} },
+    // header row
+    e('div', { className:'flex items-start justify-between', style:{marginBottom:6} },
+      e('div', null,
+        e('span', { className:'font-bold text-sm', style:{color:'#e2e8f0'} }, p.name),
+        p.code && p.code !== p.name ? e('span', { className:'text-xs ml-2', style:{color:'#64748b'} }, p.code) : null,
+      ),
+      e('div', { style:{display:'flex', alignItems:'center', gap:6} },
+        e('span', { className:'stage-badge ' + stageClass(p.stage) }, p.stage),
+        e('span', { style:{fontSize:12, color:'#475569'} }, expanded ? '▲' : '▼')
+      )
+    ),
+    // tags
+    e('div', { className:'flex flex-wrap gap-1', style:{marginBottom:6} },
+      e('span', { className:'stage-badge ' + modalityClass(p.modality), style:{marginRight:4} }, p.modality),
+      e('span', { style:{fontSize:11, color: DISEASE_COLORS[p.disease] || '#94a3b8'} }, p.disease),
+    ),
+    // basic info
+    e('div', { className:'text-xs', style:{color:'#94a3b8', marginBottom:3} },
+      e('span', {style:{color:'#60a5fa'}}, '公司：'), p.company
+    ),
+    e('div', { className:'text-xs', style:{color:'#94a3b8', marginBottom:3} },
+      e('span', {style:{color:'#60a5fa'}}, '适应症：'), p.indication
+    ),
+    e('div', { className:'text-xs', style:{color:'#94a3b8'} },
+      e('span', {style:{color:'#4ade80'}}, '峰值市场：'), '$' + p.peakMarketB + 'B'
+    ),
+    // expandable detail
+    expanded ? e('div', { style:{marginTop:10} },
+      // clinical data
+      e('div', { className:'clinical-box' },
+        e('div', { style:{fontSize:10, fontWeight:'700', color:'#38bdf8', marginBottom:4, textTransform:'uppercase', letterSpacing:'0.5px'} }, '📋 临床数据'),
+        e('div', { className:'text-xs', style:{color:'#94a3b8', lineHeight:1.65} }, p.clinicalData)
+      ),
+      // analyst view
+      e('div', { style:{borderTop:'1px solid #1e293b', paddingTop:8, marginTop:8} },
+        e('div', { style:{fontSize:10, fontWeight:'700', color:'#fbbf24', marginBottom:4, textTransform:'uppercase', letterSpacing:'0.5px'} }, '💡 分析师观点'),
+        e('div', { className:'text-xs', style:{color:'#94a3b8', lineHeight:1.65} }, p.analystView)
+      )
+    ) : null
+  );
+}
+
+// ============================================================
+// DETAIL PANEL
+// ============================================================
+function DetailPanel(props) {
+  var ts = props.targetStats;
+  var onClose = props.onClose;
+  if (!ts) return null;
+  var stageCount = {};
+  ts.pipelines.forEach(function(p){ stageCount[p.stage] = (stageCount[p.stage]||0)+1; });
+
+  return e('div', { className:'panel-slide', style:{height:'100%', overflowY:'auto'} },
+    e('div', { className:'flex items-center justify-between', style:{padding:'16px 20px 12px', borderBottom:'1px solid #1e293b', position:'sticky', top:0, background:'#0f1117', zIndex:10} },
+      e('div', null,
+        e('div', { style:{fontSize:20, fontWeight:'800', color:'#e2e8f0'} }, ts.target),
+        e('div', { style:{fontSize:12, color: DISEASE_COLORS[ts.disease]||'#94a3b8', marginTop:2} }, ts.disease + ' · ' + ts.count + ' 条在研管线')
+      ),
+      e('button', { onClick:onClose, style:{background:'#1e293b', border:'none', color:'#94a3b8', borderRadius:6, padding:'4px 10px', cursor:'pointer', fontSize:13} }, '✕ 关闭')
+    ),
+    e('div', { style:{padding:'12px 20px'} },
+      e('div', { className:'grid grid-cols-3 gap-3', style:{marginBottom:16} },
+        e('div',{className:'card-bg rounded-lg p-3 text-center'},e('div',{style:{fontSize:22,fontWeight:'800',color:'#60a5fa'}},ts.count),e('div',{style:{fontSize:11,color:'#64748b'}},'在研管线数')),
+        e('div',{className:'card-bg rounded-lg p-3 text-center'},e('div',{style:{fontSize:22,fontWeight:'800',color:'#4ade80'}},'$'+ts.peakMarket+'B'),e('div',{style:{fontSize:11,color:'#64748b'}},'峰值市场规模')),
+        e('div',{className:'card-bg rounded-lg p-3 text-center'},e('div',{style:{fontSize:18,fontWeight:'800',color:DISEASE_COLORS[ts.disease]||'#94a3b8'}},ts.disease),e('div',{style:{fontSize:11,color:'#64748b'}},'疾病领域'))
+      ),
+      e('div', { style:{marginBottom:16} },
+        e('div', { style:{fontSize:12, color:'#64748b', marginBottom:8} }, '研发阶段分布'),
+        e('div', { className:'flex flex-wrap gap-2' },
+          Object.entries(stageCount).map(function(pair){ return e('span',{key:pair[0],className:'stage-badge '+stageClass(pair[0])},pair[0]+' ×'+pair[1]); })
+        )
+      ),
+      e('div', { style:{fontSize:12, color:'#64748b', marginBottom:6} }, '在研管线详情 · 点击展开临床数据'),
+      ts.pipelines.map(function(p){ return e(PipelineCard, { key:p.id, pipeline:p }); })
+    )
+  );
+}
+
+// ============================================================
+// SEARCH BAR
+// ============================================================
+function SearchBar(props) {
+  var onSelect = props.onSelect;
+  var _q = useState(''); var query = _q[0]; var setQuery = _q[1];
+  var _open = useState(false); var open = _open[0]; var setOpen = _open[1];
+  var ref = useRef(null);
+  var allTargets = TARGET_STATS.map(function(ts){return ts.target;}).sort();
+  var filtered = query.trim()==='' ? allTargets : allTargets.filter(function(t){return t.toLowerCase().indexOf(query.toLowerCase())>-1;});
+  useEffect(function(){
+    function handler(ev){if(ref.current&&!ref.current.contains(ev.target))setOpen(false);}
+    document.addEventListener('mousedown',handler);
+    return function(){document.removeEventListener('mousedown',handler);};
+  },[]);
+  function handleSelect(t){
+    var ts=TARGET_STATS.find(function(x){return x.target===t;});
+    if(ts)onSelect(ts);
+    setQuery(t); setOpen(false);
+  }
+  return e('div',{ref:ref,style:{position:'relative',width:'100%',maxWidth:400}},
+    e('div',{style:{position:'relative'}},
+      e('input',{type:'text',value:query,onChange:function(ev){setQuery(ev.target.value);setOpen(true);},onFocus:function(){setOpen(true);},placeholder:'🔍  搜索靶点（如 PCSK9、TTR、Lp(a)）',style:{width:'100%',background:'#1e293b',border:'1px solid #334155',borderRadius:10,padding:'10px 16px',color:'#e2e8f0',fontSize:14,outline:'none',boxSizing:'border-box'}}),
+      query?e('button',{onClick:function(){setQuery('');setOpen(false);},style:{position:'absolute',right:10,top:'50%',transform:'translateY(-50%)',background:'none',border:'none',color:'#64748b',cursor:'pointer',fontSize:16}},'×'):null
+    ),
+    open&&filtered.length>0?e('div',{className:'search-dropdown'},
+      filtered.map(function(t){
+        var ts=TARGET_STATS.find(function(x){return x.target===t;});
+        return e('div',{key:t,className:'search-item',style:{padding:'10px 16px',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'space-between'},onMouseDown:function(){handleSelect(t);}},
+          e('div',null,e('span',{style:{fontWeight:'600',color:'#e2e8f0',fontSize:14}},t),e('span',{style:{fontSize:11,color:DISEASE_COLORS[ts.disease]||'#94a3b8',marginLeft:8}},ts.disease)),
+          e('div',{style:{display:'flex',alignItems:'center',gap:8}},e('span',{style:{fontSize:11,color:'#60a5fa'}},ts.count+'条管线'),e('span',{style:{fontSize:11,color:'#4ade80'}},'$'+ts.peakMarket+'B'))
+        );
+      })
+    ):null
+  );
+}
+
+// ============================================================
+// LEGEND
+// ============================================================
+function Legend() {
+  return e('div',{style:{display:'flex',flexWrap:'wrap',gap:10,marginTop:8}},
+    Object.entries(DISEASE_COLORS).map(function(pair){
+      return e('div',{key:pair[0],style:{display:'flex',alignItems:'center',gap:5}},
+        e('div',{style:{width:10,height:10,borderRadius:'50%',background:pair[1]}}),
+        e('span',{style:{fontSize:11,color:'#94a3b8'}},pair[0])
+      );
+    })
+  );
+}
+
+// ============================================================
+// STATS BAR
+// ============================================================
+function StatsBar() {
+  var approved=PIPELINES.filter(function(p){return p.stage==='已获批';}).length;
+  var ph3=PIPELINES.filter(function(p){return p.stage.indexOf('Ph3')>-1;}).length;
+  var ph2=PIPELINES.filter(function(p){return p.stage.indexOf('Ph2')>-1;}).length;
+  var stats=[
+    {label:'总管线数',value:PIPELINES.length,color:'#60a5fa'},
+    {label:'靶点数',value:TARGET_STATS.length,color:'#a855f7'},
+    {label:'已获批',value:approved,color:'#4ade80'},
+    {label:'Ph3',value:ph3,color:'#93c5fd'},
+    {label:'Ph2',value:ph2,color:'#d8b4fe'},
+  ];
+  return e('div',{style:{display:'flex',gap:16,flexWrap:'wrap'}},
+    stats.map(function(s){
+      return e('div',{key:s.label,style:{display:'flex',alignItems:'center',gap:6}},
+        e('span',{style:{fontSize:22,fontWeight:'800',color:s.color}},s.value),
+        e('span',{style:{fontSize:11,color:'#64748b'}},s.label)
+      );
+    })
+  );
+}
+
+// ============================================================
+// TABLE VIEW — 含临床数据列
+// ============================================================
+function TableView(props) {
+  var onSelect = props.onSelect;
+  var _sort = useState('target'); var sortKey = _sort[0]; var setSortKey = _sort[1];
+  var _dir = useState(1); var sortDir = _dir[0]; var setSortDir = _dir[1];
+  var _filter = useState('全部'); var filterDisease = _filter[0]; var setFilterDisease = _filter[1];
+  var _filterMod = useState('全部'); var filterMod = _filterMod[0]; var setFilterMod = _filterMod[1];
+  var _expRow = useState(null); var expRow = _expRow[0]; var setExpRow = _expRow[1];
+
+  var diseases = ['全部'].concat(Object.keys(DISEASE_COLORS));
+  var modalities = ['全部','siRNA','ASO','miRNA','mRNA','其他'];
+
+  var filtered = PIPELINES.filter(function(p){
+    return (filterDisease==='全部'||p.disease===filterDisease)&&(filterMod==='全部'||p.modality===filterMod);
+  });
+  filtered.sort(function(a,b){
+    var av=a[sortKey]||''; var bv=b[sortKey]||'';
+    if(typeof av==='number') return sortDir*(av-bv);
+    return sortDir*av.toString().localeCompare(bv.toString());
+  });
+
+  function thClick(k){if(sortKey===k)setSortDir(-sortDir);else{setSortKey(k);setSortDir(1);}}
+  function thEl(label,key){
+    var arrow=sortKey===key?(sortDir===1?' ▲':' ▼'):'';
+    return e('th',{key:key,onClick:function(){thClick(key);},style:{padding:'8px 12px',textAlign:'left',fontSize:11,color:'#64748b',cursor:'pointer',userSelect:'none',whiteSpace:'nowrap',borderBottom:'1px solid #1e293b',background:'#0d1117'}},label+arrow);
+  }
+
+  return e('div',null,
+    e('div',{style:{display:'flex',gap:8,flexWrap:'wrap',marginBottom:12}},
+      e('div',{style:{display:'flex',gap:4,flexWrap:'wrap',alignItems:'center'}},
+        e('span',{style:{fontSize:11,color:'#64748b'}},'疾病：'),
+        diseases.map(function(d){return e('button',{key:d,onClick:function(){setFilterDisease(d);},className:filterDisease===d?'tab-active':'tab-inactive',style:{border:'none',borderRadius:6,padding:'3px 10px',fontSize:11,cursor:'pointer'}},d);})
+      ),
+      e('div',{style:{display:'flex',gap:4,flexWrap:'wrap',alignItems:'center',marginTop:4}},
+        e('span',{style:{fontSize:11,color:'#64748b'}},'类型：'),
+        modalities.map(function(m){return e('button',{key:m,onClick:function(){setFilterMod(m);},className:filterMod===m?'tab-active':'tab-inactive',style:{border:'none',borderRadius:6,padding:'3px 10px',fontSize:11,cursor:'pointer'}},m);})
+      )
+    ),
+    e('div',{style:{overflowX:'auto',borderRadius:8,border:'1px solid #1e293b'}},
+      e('table',{style:{width:'100%',borderCollapse:'collapse',fontSize:12}},
+        e('thead',null,
+          e('tr',null,
+            thEl('管线名称','name'),
+            thEl('公司','company'),
+            thEl('类型','modality'),
+            thEl('靶点','target'),
+            thEl('适应症','indication'),
+            thEl('阶段','stage'),
+            thEl('峰值市场','peakMarketB'),
+            e('th',{key:'clin',style:{padding:'8px 12px',textAlign:'left',fontSize:11,color:'#38bdf8',whiteSpace:'nowrap',borderBottom:'1px solid #1e293b',background:'#0d1117'}},'📋 临床数据'),
+          )
+        ),
+        e('tbody',null,
+          filtered.map(function(p){
+            var isExp = expRow === p.id;
+            return [
+              e('tr',{
+                key:p.id,
+                onClick:function(){
+                  setExpRow(isExp ? null : p.id);
+                  var ts=TARGET_STATS.find(function(x){return x.target===p.target;});
+                  if(ts)onSelect(ts);
+                },
+                style:{cursor:'pointer',borderBottom:isExp?'none':'1px solid #1a2233',background:isExp?'#131929':'transparent'},
+                className:'card-hover',
+              },
+                e('td',{style:{padding:'8px 12px',color:'#e2e8f0',fontWeight:'600',whiteSpace:'nowrap'}},p.name),
+                e('td',{style:{padding:'8px 12px',color:'#94a3b8',maxWidth:160,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}},p.company),
+                e('td',{style:{padding:'8px 12px'}},e('span',{className:'stage-badge '+modalityClass(p.modality)},p.modality)),
+                e('td',{style:{padding:'8px 12px',color:DISEASE_COLORS[p.disease]||'#94a3b8',fontWeight:'600'}},p.target),
+                e('td',{style:{padding:'8px 12px',color:'#94a3b8',maxWidth:180,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}},p.indication),
+                e('td',{style:{padding:'8px 12px'}},e('span',{className:'stage-badge '+stageClass(p.stage)},p.stage)),
+                e('td',{style:{padding:'8px 12px',color:'#4ade80',fontWeight:'600'}},'$'+p.peakMarketB+'B'),
+                e('td',{style:{padding:'8px 12px',color:'#64748b',fontSize:11,maxWidth:200,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}},
+                  e('span',{style:{color:'#38bdf840'}},isExp?'▲ 收起':'▼ 展开'),
+                  e('span',{style:{marginLeft:6,color:'#475569'}},p.clinicalData.substring(0,40)+'…')
+                )
+              ),
+              isExp ? e('tr',{key:p.id+'-exp',style:{borderBottom:'1px solid #1a2233'}},
+                e('td',{colSpan:8,style:{padding:'0 16px 16px'}},
+                  e('div',{style:{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}},
+                    e('div',{className:'clinical-box'},
+                      e('div',{style:{fontSize:10,fontWeight:'700',color:'#38bdf8',marginBottom:6,textTransform:'uppercase',letterSpacing:'0.5px'}},'📋 临床数据'),
+                      e('div',{style:{fontSize:12,color:'#94a3b8',lineHeight:1.7}},p.clinicalData)
+                    ),
+                    e('div',{style:{background:'#0d1520',border:'1px solid #3d2a00',borderRadius:8,padding:'10px 12px'}},
+                      e('div',{style:{fontSize:10,fontWeight:'700',color:'#fbbf24',marginBottom:6,textTransform:'uppercase',letterSpacing:'0.5px'}},'💡 分析师观点'),
+                      e('div',{style:{fontSize:12,color:'#94a3b8',lineHeight:1.7}},p.analystView)
+                    )
+                  )
+                )
+              ) : null
+            ];
+          })
+        )
+      )
+    ),
+    e('div',{style:{marginTop:8,fontSize:11,color:'#475569'}},'显示 '+filtered.length+' / '+PIPELINES.length+' 条管线 · 点击行可展开临床数据')
+  );
+}
+
+// ============================================================
+// MAIN APP
+// ============================================================
+function App() {
+  var _sel = useState(null); var selected = _sel[0]; var setSelected = _sel[1];
+  var _tab = useState('chart'); var tab = _tab[0]; var setTab = _tab[1];
+  var _panel = useState(false); var panelOpen = _panel[0]; var setPanelOpen = _panel[1];
+
+  function handleSelect(ts){ setSelected(ts); setPanelOpen(true); }
+  var tabBtns = [{id:'chart',label:'📊 象限分布图'},{id:'table',label:'📋 管线数据库'}];
+
+  return e('div',{style:{minHeight:'100vh',display:'flex',flexDirection:'column'}},
+    e('header',{className:'header-gradient',style:{padding:'0 24px',height:58,display:'flex',alignItems:'center',justifyContent:'space-between',flexShrink:0}},
+      e('div',{style:{display:'flex',alignItems:'center',gap:12}},
+        e('div',{style:{fontSize:22,lineHeight:1}},'🧬'),
+        e('div',null,
+          e('div',{style:{fontSize:16,fontWeight:'800',color:'#e2e8f0',letterSpacing:'-0.3px'}},'小核酸在研管线数据库'),
+          e('div',{style:{fontSize:11,color:'#64748b'}},'Small Nucleic Acid Pipeline Intelligence · siRNA / ASO / miRNA')
+        )
+      ),
+      e('div',{style:{display:'flex',gap:8,alignItems:'center'}},
+        tabBtns.map(function(tb){
+          return e('button',{key:tb.id,onClick:function(){setTab(tb.id);},className:tab===tb.id?'tab-active':'tab-inactive',style:{border:'none',borderRadius:8,padding:'6px 14px',fontSize:12,cursor:'pointer',fontWeight:'600'}},tb.label);
+        })
+      )
+    ),
+    e('div',{style:{flex:1,display:'flex',overflow:'hidden'}},
+      e('div',{style:{flex:1,overflowY:'auto',padding:'20px 24px'}},
+        e('div',{className:'card-bg rounded-xl p-4',style:{marginBottom:16,display:'flex',flexWrap:'wrap',gap:16,alignItems:'center',justifyContent:'space-between'}},
+          e(StatsBar),
+          e(SearchBar,{onSelect:handleSelect})
+        ),
+        tab==='chart'?e('div',null,
+          e('div',{className:'card-bg rounded-xl p-4',style:{marginBottom:16}},
+            e('div',{style:{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:12}},
+              e('div',null,
+                e('div',{style:{fontSize:15,fontWeight:'700',color:'#e2e8f0'}},'小核酸靶点投资象限图'),
+                e('div',{style:{fontSize:11,color:'#64748b',marginTop:2}},'横轴：同靶点在研管线数量　纵轴：靶点峰值市场规模（$B）　点击圆点查看详情')
+              )
+            ),
+            e(ScatterPlot,{onSelect:handleSelect,selected:selected}),
+            e(Legend)
+          )
+        ):e('div',null,
+          e('div',{className:'card-bg rounded-xl p-4'},
+            e('div',{style:{fontSize:15,fontWeight:'700',color:'#e2e8f0',marginBottom:12}},'在研管线全库'),
+            e(TableView,{onSelect:handleSelect})
+          )
+        )
+      ),
+      panelOpen&&selected?e('div',{style:{width:420,flexShrink:0,borderLeft:'1px solid #1e293b',background:'#0d1117',overflowY:'auto',height:'100%'}},
+        e(DetailPanel,{targetStats:selected,onClose:function(){setPanelOpen(false);setSelected(null);}})
+      ):null
+    ),
+    e('div',{style:{padding:'8px 24px',borderTop:'1px solid #1e293b',display:'flex',alignItems:'center',justifyContent:'space-between'}},
+      e('span',{style:{fontSize:11,color:'#334155'}},'数据仅供参考，不构成投资建议。市场数据为分析师预测，实际以公司公告为准。'),
+      e('span',{style:{fontSize:11,color:'#334155'}},'© 2025 Small Nucleic Acid Pipeline DB')
+    )
+  );
+}
+
+// ============================================================
+// ROOT — 密码门控
+// ============================================================
+function Root() {
+  var _auth = useState(false); var authed = _auth[0]; var setAuthed = _auth[1];
+  if (!authed) return e(LoginScreen, { onAuth: function(){ setAuthed(true); } });
+  return e(App);
+}
+
+var root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(e(Root));
+</script>
+</body>
+</html>
