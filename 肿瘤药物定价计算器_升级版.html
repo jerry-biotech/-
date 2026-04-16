@@ -1,0 +1,1385 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>肿瘤创新药价值定价计算器 | 系统动力学模型</title>
+    <style>
+        :root {
+            --primary: #1d4ed8;
+            --primary-light: #dbeafe;
+            --primary-dark: #1e3a8a;
+            --violet: #7c3aed;
+            --violet-light: #ede9fe;
+            --success: #059669;
+            --warning: #d97706;
+            --warning-light: #fef3c7;
+            --danger: #dc2626;
+            --danger-light: #fef2f2;
+            --orange: #ea580c;
+            --gray-50: #f9fafb;
+            --gray-100: #f3f4f6;
+            --gray-200: #e5e7eb;
+            --gray-300: #d1d5db;
+            --gray-500: #6b7280;
+            --gray-700: #374151;
+            --gray-900: #111827;
+            --radius: 10px;
+            --shadow-sm: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
+            --shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px rgba(0,0,0,0.06);
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", Roboto, sans-serif;
+            background: linear-gradient(135deg, #eff6ff 0%, #f5f3ff 50%, #fdf4ff 100%);
+            min-height: 100vh;
+            padding: 16px;
+            color: var(--gray-900);
+            font-size: 13px;
+        }
+
+        .container {
+            max-width: 1440px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px -10px rgba(0,0,0,0.15);
+            overflow: hidden;
+        }
+
+        /* ── HEADER ── */
+        .header {
+            background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 40%, #3b82f6 75%, #7c3aed 100%);
+            color: white;
+            padding: 22px 32px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        .header-left h1 { font-size: 20px; font-weight: 800; margin-bottom: 5px; letter-spacing: -0.3px; }
+        .header-left p { opacity: 0.8; font-size: 12px; }
+        .header-badges { display: flex; gap: 8px; flex-wrap: wrap; }
+        .hbadge {
+            background: rgba(255,255,255,0.15);
+            border: 1px solid rgba(255,255,255,0.25);
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+            white-space: nowrap;
+        }
+
+        /* ── LAYOUT ── */
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 430px;
+            min-height: 600px;
+        }
+
+        .input-section {
+            padding: 20px 24px;
+            border-right: 1px solid var(--gray-200);
+            overflow-y: auto;
+            max-height: calc(100vh - 90px);
+        }
+
+        .result-section {
+            background: var(--gray-50);
+            padding: 18px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            overflow-y: auto;
+            max-height: calc(100vh - 90px);
+        }
+
+        /* ── CARDS ── */
+        .card {
+            background: white;
+            border: 1px solid var(--gray-200);
+            border-radius: var(--radius);
+            margin-bottom: 14px;
+            box-shadow: var(--shadow-sm);
+            overflow: hidden;
+        }
+
+        .card-hd {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 11px 15px;
+            cursor: pointer;
+            user-select: none;
+            background: var(--gray-50);
+            border-bottom: 1px solid var(--gray-200);
+            transition: background 0.15s;
+        }
+        .card-hd:hover { background: var(--gray-100); }
+        .card-hd-left { display: flex; align-items: center; gap: 7px; font-weight: 700; font-size: 13px; }
+        .card-body { padding: 14px 15px; }
+
+        .score-badge {
+            padding: 2px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 700;
+        }
+        .score-blue { background: var(--primary-light); color: var(--primary); }
+        .score-violet { background: var(--violet-light); color: var(--violet); }
+        .score-amber { background: var(--warning-light); color: var(--warning); }
+
+        /* ── COMPARATOR ── */
+        .comparator-card {
+            background: linear-gradient(135deg, #eff6ff 0%, #f5f3ff 100%);
+            border: 2px solid #bfdbfe;
+            border-radius: var(--radius);
+            padding: 15px;
+            margin-bottom: 14px;
+        }
+        .comparator-card > label {
+            display: block;
+            font-weight: 800;
+            font-size: 13px;
+            color: var(--primary-dark);
+            margin-bottom: 9px;
+        }
+
+        select {
+            width: 100%;
+            padding: 9px 11px;
+            border: 1.5px solid var(--gray-300);
+            border-radius: 7px;
+            font-size: 12.5px;
+            background: white;
+            cursor: pointer;
+            color: var(--gray-900);
+            outline: none;
+            transition: border-color 0.2s;
+            font-family: inherit;
+        }
+        select:focus { border-color: var(--primary); }
+        optgroup { font-weight: 700; }
+
+        .comp-meta {
+            margin-top: 9px;
+            background: rgba(255,255,255,0.7);
+            border-radius: 6px;
+            padding: 7px 10px;
+            font-size: 12px;
+            color: var(--gray-700);
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        .comp-meta strong { color: var(--primary); }
+
+        /* ── INFO GRID ── */
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 9px;
+        }
+        .info-item label {
+            display: block;
+            font-size: 10.5px;
+            font-weight: 700;
+            color: var(--gray-500);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+        }
+        .info-item select { font-size: 12px; padding: 7px 9px; }
+
+        /* ── SUB-DIMENSION TITLES ── */
+        .sub-title {
+            font-size: 11px;
+            font-weight: 800;
+            color: var(--gray-500);
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            margin: 12px 0 7px;
+            padding-bottom: 4px;
+            border-bottom: 1.5px solid var(--gray-100);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        /* ── CHECKBOX GRID ── */
+        .cb-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
+        }
+
+        .cb-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 7px;
+            padding: 8px 9px;
+            border: 1.5px solid var(--gray-200);
+            border-radius: 7px;
+            cursor: pointer;
+            transition: all 0.15s;
+            position: relative;
+        }
+        .cb-item:hover { border-color: #93c5fd; background: #f0f9ff; }
+        .cb-item.checked { border-color: var(--primary); background: #eff6ff; }
+        .cb-item.hot { border-left: 3px solid var(--orange); }
+        .cb-item.sd-link { border-left: 3px solid var(--violet); }
+        .cb-item.hot.sd-link { border-left: 3px solid var(--violet); }
+
+        .cb-item input[type="checkbox"] {
+            width: 14px;
+            height: 14px;
+            flex-shrink: 0;
+            cursor: pointer;
+            accent-color: var(--primary);
+            margin-top: 2px;
+        }
+        .cb-item label {
+            font-size: 11.5px;
+            line-height: 1.4;
+            color: var(--gray-700);
+            cursor: pointer;
+            flex: 1;
+        }
+
+        .tag {
+            display: inline-block;
+            font-size: 9.5px;
+            font-weight: 700;
+            padding: 1px 5px;
+            border-radius: 3px;
+            margin-left: 3px;
+            vertical-align: middle;
+        }
+        .tag-w { background: #dbeafe; color: #1d4ed8; }
+        .tag-hot { background: #fff7ed; color: #ea580c; }
+        .tag-sd { background: #ede9fe; color: #7c3aed; }
+
+        /* ── SD FEEDBACK BANNER ── */
+        .sd-banner {
+            display: none;
+            background: linear-gradient(135deg, #ede9fe, #ddd6fe);
+            border: 1px solid #c4b5fd;
+            border-radius: 7px;
+            padding: 9px 12px;
+            margin-bottom: 10px;
+            font-size: 11.5px;
+            color: #5b21b6;
+            align-items: center;
+            gap: 8px;
+        }
+        .sd-banner.on { display: flex; }
+
+        /* ── SLIDERS ── */
+        .slider-group { margin-bottom: 11px; }
+        .slider-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            color: var(--gray-700);
+            margin-bottom: 5px;
+            font-weight: 600;
+        }
+        input[type="range"] {
+            width: 100%;
+            accent-color: var(--primary);
+            cursor: pointer;
+        }
+        .slider-ticks {
+            display: flex;
+            justify-content: space-between;
+            font-size: 10px;
+            color: var(--gray-500);
+            margin-top: 2px;
+        }
+
+        /* ── RESULT CARDS ── */
+        .result-hero {
+            background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 50%, #3730a3 100%);
+            color: white;
+            border-radius: var(--radius);
+            padding: 18px 20px;
+            text-align: center;
+        }
+        .hero-label { font-size: 11px; opacity: 0.8; margin-bottom: 6px; }
+        .hero-coeff { font-size: 56px; font-weight: 900; line-height: 1; letter-spacing: -2px; }
+        .hero-sub {
+            background: rgba(255,255,255,0.18);
+            border-radius: 12px;
+            padding: 3px 14px;
+            font-size: 12px;
+            display: inline-block;
+            margin-top: 8px;
+        }
+
+        /* ── RADAR ── */
+        .radar-card {
+            background: white;
+            border-radius: var(--radius);
+            padding: 14px;
+            border: 1px solid var(--gray-200);
+            box-shadow: var(--shadow-sm);
+        }
+        .radar-title {
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--gray-700);
+            margin-bottom: 10px;
+            text-align: center;
+        }
+
+        /* ── PRICE GRID ── */
+        .price-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 7px; }
+        .price-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin-top: 7px; }
+
+        .pbox {
+            background: white;
+            border-radius: 7px;
+            padding: 11px;
+            text-align: center;
+            border: 2px solid var(--gray-200);
+            box-shadow: var(--shadow-sm);
+        }
+        .pbox.cons { border-color: #fbbf24; }
+        .pbox.base { border-color: var(--primary); background: #eff6ff; }
+        .pbox.opti { border-color: var(--success); }
+        .pbox.nrdl { border-color: var(--danger); background: var(--danger-light); }
+        .pbox.exp { border-color: var(--violet); background: var(--violet-light); }
+
+        .pbox-lbl { font-size: 10px; color: var(--gray-500); font-weight: 700; margin-bottom: 3px; }
+        .pbox-val { font-size: 17px; font-weight: 800; color: var(--gray-900); }
+        .pbox.base .pbox-val { color: var(--primary); font-size: 21px; }
+        .pbox.nrdl .pbox-val { color: var(--danger); }
+        .pbox.exp .pbox-val { color: var(--violet); }
+
+        /* ── BREAKDOWN ── */
+        .breakdown-card {
+            background: white;
+            border-radius: var(--radius);
+            border: 1px solid var(--gray-200);
+            box-shadow: var(--shadow-sm);
+            overflow: hidden;
+        }
+        .bk-hd {
+            padding: 10px 14px;
+            background: var(--gray-50);
+            font-weight: 700;
+            font-size: 12px;
+            border-bottom: 1px solid var(--gray-200);
+        }
+        .bk-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 14px;
+            border-bottom: 1px solid var(--gray-100);
+        }
+        .bk-row:last-child { border-bottom: none; background: #f0f9ff; font-weight: 700; }
+        .bk-name { font-size: 11.5px; color: var(--gray-700); }
+        .bk-val {
+            font-size: 11.5px;
+            font-weight: 700;
+            background: var(--primary-light);
+            color: var(--primary);
+            padding: 2px 8px;
+            border-radius: 10px;
+        }
+        .bk-val.zero { background: var(--gray-100); color: var(--gray-500); }
+        .bk-val.total { background: var(--primary); color: white; font-size: 13px; }
+
+        /* ── SENSITIVITY BARS ── */
+        .sens-section {
+            background: white;
+            border-radius: var(--radius);
+            border: 1px solid var(--gray-200);
+            padding: 13px;
+            box-shadow: var(--shadow-sm);
+        }
+        .sens-title { font-size: 12px; font-weight: 700; color: var(--gray-700); margin-bottom: 9px; }
+        .sens-row {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            margin-bottom: 5px;
+        }
+        .sens-lbl { font-size: 11px; color: var(--gray-700); width: 95px; flex-shrink: 0; }
+        .sens-bar { flex: 1; height: 5px; background: var(--gray-200); border-radius: 3px; overflow: hidden; }
+        .sens-fill {
+            height: 100%;
+            border-radius: 3px;
+            background: linear-gradient(90deg, #3b82f6, #7c3aed);
+            transition: width 0.4s;
+        }
+        .sens-val { font-size: 10.5px; font-weight: 700; color: var(--primary); width: 32px; text-align: right; }
+
+        /* ── NOTE & FORMULA ── */
+        .note { background: var(--warning-light); border-left: 3px solid var(--warning); padding: 9px 12px; border-radius: 0 7px 7px 0; font-size: 11.5px; color: var(--gray-700); line-height: 1.5; }
+        .formula { background: var(--gray-50); border: 1px solid var(--gray-200); border-radius: 7px; padding: 11px; font-size: 10.5px; color: var(--gray-500); font-family: 'Courier New', monospace; line-height: 1.7; }
+        .formula strong { color: var(--gray-700); font-family: inherit; }
+
+        /* ── BUTTONS ── */
+        .btn-calc {
+            width: 100%;
+            padding: 13px;
+            background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 800;
+            cursor: pointer;
+            margin-top: 6px;
+            transition: transform 0.2s, box-shadow 0.2s;
+            letter-spacing: 0.3px;
+            font-family: inherit;
+        }
+        .btn-calc:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(59,130,246,0.35); }
+        .btn-reset {
+            width: 100%;
+            padding: 9px;
+            background: white;
+            color: var(--gray-700);
+            border: 1.5px solid var(--gray-300);
+            border-radius: 8px;
+            font-size: 12.5px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 7px;
+            transition: all 0.15s;
+            font-family: inherit;
+        }
+        .btn-reset:hover { border-color: var(--danger); color: var(--danger); }
+
+        /* ── SAKIGAKE NOTE ── */
+        .saki-note {
+            background: var(--violet-light);
+            border-radius: 7px;
+            padding: 8px 11px;
+            font-size: 11px;
+            color: #5b21b6;
+            margin-bottom: 11px;
+        }
+        .market-note {
+            background: var(--warning-light);
+            border-radius: 7px;
+            padding: 8px 11px;
+            font-size: 11px;
+            color: #92400e;
+            margin-top: 10px;
+        }
+
+        /* ── SECTION HEADER for price ── */
+        .price-section-hd {
+            font-size: 11.5px;
+            font-weight: 800;
+            color: var(--gray-700);
+            margin-bottom: 7px;
+        }
+        .nrdl-hd {
+            font-size: 11px;
+            font-weight: 800;
+            color: var(--danger);
+            margin-bottom: 5px;
+            margin-top: 2px;
+        }
+
+        /* ── RESPONSIVE ── */
+        @media (max-width: 1050px) {
+            .main-content { grid-template-columns: 1fr; }
+            .input-section { border-right: none; border-bottom: 1px solid var(--gray-200); max-height: none; }
+            .result-section { max-height: none; }
+        }
+        @media (max-width: 640px) {
+            body { padding: 8px; }
+            .header { padding: 16px; }
+            .header-left h1 { font-size: 16px; }
+            .cb-grid { grid-template-columns: 1fr; }
+            .price-grid-3 { grid-template-columns: 1fr 1fr; }
+            .info-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+
+    <!-- ══ HEADER ══ -->
+    <div class="header">
+        <div class="header-left">
+            <h1>🎯 肿瘤创新药价值定价计算器</h1>
+            <p>基于日本NHI系统动力学模型 (Xing et al., Front. Pharmacol. 2025) · 五维溢价评估 · 聚焦肿瘤适应症 · 含中国医保情境</p>
+        </div>
+        <div class="header-badges">
+            <span class="hbadge">SD Model</span>
+            <span class="hbadge">30+ 对照药</span>
+            <span class="hbadge">NRDL调整</span>
+            <span class="hbadge">雷达图</span>
+        </div>
+    </div>
+
+    <div class="main-content">
+
+        <!-- ══════════════════════════════════════════
+             LEFT: INPUT SECTION
+        ══════════════════════════════════════════ -->
+        <div class="input-section">
+
+            <!-- Drug Context Info -->
+            <div class="card">
+                <div class="card-hd" onclick="toggleCard('drugInfo')">
+                    <div class="card-hd-left">🏥 药物基本信息</div>
+                    <span style="color:#9ca3af;font-size:11px;" id="arrow_drugInfo">▾</span>
+                </div>
+                <div class="card-body" id="drugInfo">
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <label>肿瘤类型</label>
+                            <select id="tumorType" onchange="calculate()">
+                                <option value="solid">实体瘤（通用）</option>
+                                <option value="lung">肺癌 (NSCLC/SCLC)</option>
+                                <option value="breast">乳腺癌</option>
+                                <option value="gi">消化道肿瘤</option>
+                                <option value="heme">血液肿瘤</option>
+                                <option value="gyn">妇科肿瘤</option>
+                                <option value="rare_cancer">罕见肿瘤</option>
+                                <option value="multi">泛瘤种</option>
+                            </select>
+                        </div>
+                        <div class="info-item">
+                            <label>治疗线数</label>
+                            <select id="therapyLine" onchange="calculate()">
+                                <option value="1L">一线治疗 (1L)</option>
+                                <option value="2L">二线治疗 (2L)</option>
+                                <option value="3L">三线及以上 (3L+)</option>
+                                <option value="maint">维持治疗</option>
+                                <option value="adj">辅助/新辅助</option>
+                            </select>
+                        </div>
+                        <div class="info-item">
+                            <label>靶向精准性</label>
+                            <select id="biomarker" onchange="calculate()">
+                                <option value="yes">生物标志物精准靶向</option>
+                                <option value="partial">部分生物标志物选择</option>
+                                <option value="no">广谱（无需检测）</option>
+                            </select>
+                        </div>
+                        <div class="info-item">
+                            <label>药物类型</label>
+                            <select id="drugType" onchange="calculate()">
+                                <option value="smi">小分子抑制剂 (SMI)</option>
+                                <option value="mab">单克隆抗体 (mAb)</option>
+                                <option value="adc">ADC药物</option>
+                                <option value="bsab">双特异性抗体 (BsAb)</option>
+                                <option value="cart">CAR-T细胞疗法</option>
+                                <option value="immuno">免疫检查点抑制剂</option>
+                                <option value="other">其他生物制品</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Comparator Selection -->
+            <div class="comparator-card">
+                <label>📊 选择可比药物基准（Comparator Drug）</label>
+                <select id="comparatorSelect" onchange="updateComparator()">
+                    <optgroup label="── 🔬 ADC类（抗体药物偶联物）──">
+                        <option value="60" data-ctx="HER2+乳腺癌/胃癌/肺癌" data-class="ADC">DS-8201（德曲妥珠单抗/Enhertu）· 60万/年</option>
+                        <option value="36.5" data-ctx="HER2+乳腺癌" data-class="ADC" selected>T-DM1（恩美曲妥珠单抗）· 36.5万/年</option>
+                        <option value="45" data-ctx="TNBC/尿路上皮癌" data-class="ADC">戈沙妥珠单抗（Trodelvy）· 45万/年</option>
+                        <option value="20" data-ctx="HER2+胃癌/乳腺癌" data-class="ADC">维迪西妥单抗（RC48）· 20万/年 国产</option>
+                        <option value="50" data-ctx="复发/难治B-ALL" data-class="ADC">奥加伊妥珠单抗（Besylomab）· 50万/年</option>
+                        <option value="48" data-ctx="复发/难治DLBCL" data-class="ADC">维泊妥珠单抗（Polivy）· 48万/年</option>
+                        <option value="35" data-ctx="HER2低表达乳腺癌" data-class="ADC">芦康沙妥珠单抗（SKB264）· 35万/年 国产</option>
+                    </optgroup>
+                    <optgroup label="── 🎯 EGFR抑制剂 ──">
+                        <option value="30" data-ctx="EGFR T790M突变NSCLC" data-class="EGFR TKI">奥希替尼（泰瑞沙）· 30万/年（医保前参考）</option>
+                        <option value="8" data-ctx="EGFR突变NSCLC（医保后）" data-class="EGFR TKI">奥希替尼（泰瑞沙）· 8万/年（医保后）</option>
+                        <option value="12" data-ctx="EGFR突变NSCLC 三代" data-class="EGFR TKI">阿美替尼（阿斯利康/豪森）· 12万/年</option>
+                        <option value="10" data-ctx="EGFR突变NSCLC 三代" data-class="EGFR TKI">伏美替尼（艾力斯）· 10万/年 国产</option>
+                        <option value="5" data-ctx="EGFR突变NSCLC 一代" data-class="EGFR TKI">埃克替尼（凯美纳）· 5万/年 国产</option>
+                        <option value="22" data-ctx="EGFR外显子20插入突变" data-class="EGFR TKI">莫博赛替尼（Mobocertinib）· 22万/年</option>
+                    </optgroup>
+                    <optgroup label="── 🛡️ PD-1/PD-L1免疫检查点抑制剂 ──">
+                        <option value="18" data-ctx="多适应症（进口PD-1）" data-class="PD-1/L1">帕博利珠单抗（Keytruda/K药）· 18万/年</option>
+                        <option value="16" data-ctx="多适应症（进口PD-1）" data-class="PD-1/L1">纳武利尤单抗（Opdivo/O药）· 16万/年</option>
+                        <option value="40" data-ctx="NSCLC/肝癌（进口PD-L1）" data-class="PD-1/L1">阿替利珠单抗（Tecentriq/T药）· 40万/年</option>
+                        <option value="10" data-ctx="多适应症（国产PD-1）" data-class="PD-1/L1">信迪利单抗（达伯舒）· 10万/年</option>
+                        <option value="9" data-ctx="多适应症（国产PD-1）" data-class="PD-1/L1">替雷利珠单抗（百泽安）· 9万/年</option>
+                        <option value="8" data-ctx="多适应症（国产PD-1）" data-class="PD-1/L1">卡瑞利珠单抗（艾瑞卡）· 8万/年</option>
+                        <option value="9" data-ctx="多适应症（国产PD-1）" data-class="PD-1/L1">特瑞普利单抗（拓益）· 9万/年</option>
+                        <option value="8" data-ctx="NSCLC/食管癌（国产PD-L1）" data-class="PD-1/L1">舒格利单抗（思路迪）· 8万/年</option>
+                    </optgroup>
+                    <optgroup label="── 💊 CDK4/6抑制剂 ──">
+                        <option value="22" data-ctx="HR+/HER2-乳腺癌" data-class="CDK4/6">哌柏西利（爱博新/Ibrance）· 22万/年</option>
+                        <option value="20" data-ctx="HR+乳腺癌" data-class="CDK4/6">瑞博西利（Kisqali）· 20万/年</option>
+                        <option value="18" data-ctx="HR+乳腺癌（辅助）" data-class="CDK4/6">阿贝西利（Verzenio）· 18万/年</option>
+                        <option value="12" data-ctx="HR+乳腺癌 国产" data-class="CDK4/6">达尔西利（优赛）· 12万/年</option>
+                    </optgroup>
+                    <optgroup label="── 🔷 BTK抑制剂 ──">
+                        <option value="25" data-ctx="CLL/MCL/WM" data-class="BTK">伊布替尼（亿珂）· 25万/年</option>
+                        <option value="15" data-ctx="CLL/MCL/WM" data-class="BTK">泽布替尼（百悦泽）· 15万/年 国产</option>
+                        <option value="12" data-ctx="CLL/MCL 国产" data-class="BTK">奥布替尼（宜诺凯）· 12万/年 国产</option>
+                        <option value="16" data-ctx="CLL/MCL" data-class="BTK">阿可替尼（Calquence）· 16万/年</option>
+                    </optgroup>
+                    <optgroup label="── 🔵 PARP抑制剂 ──">
+                        <option value="20" data-ctx="BRCA突变卵巢癌/乳腺癌" data-class="PARP">奥拉帕利（利普卓）· 20万/年</option>
+                        <option value="18" data-ctx="卵巢癌维持治疗" data-class="PARP">尼拉帕利（则乐）· 18万/年</option>
+                        <option value="10" data-ctx="卵巢癌/乳腺癌 国产" data-class="PARP">氟唑帕利（艾坦）· 10万/年 国产</option>
+                        <option value="11" data-ctx="卵巢癌/乳腺癌 国产" data-class="PARP">帕米帕利（百汇泽）· 11万/年 国产</option>
+                        <option value="9" data-ctx="卵巢癌/前列腺癌 国产" data-class="PARP">塞利帕尼（赛维）· 9万/年 国产</option>
+                    </optgroup>
+                    <optgroup label="── 🌿 VEGF/VEGFR/多靶点 ──">
+                        <option value="8" data-ctx="多肿瘤（医保后）" data-class="VEGF/VEGFR">贝伐珠单抗（安维汀/国产仿制）· 8万/年</option>
+                        <option value="20" data-ctx="HCC/甲状腺癌/肾癌" data-class="多靶点">仑伐替尼（乐卫玛）· 20万/年</option>
+                        <option value="5" data-ctx="晚期胃癌" data-class="多靶点">阿帕替尼（艾坦）· 5万/年 国产</option>
+                        <option value="8" data-ctx="NSCLC/软组织肉瘤等" data-class="多靶点">安罗替尼（福可维）· 8万/年 国产</option>
+                        <option value="15" data-ctx="HCC" data-class="多靶点">索拉非尼（多吉美）· 15万/年</option>
+                        <option value="25" data-ctx="RCC/HCC" data-class="多靶点">卡博替尼（Cabometyx）· 25万/年</option>
+                    </optgroup>
+                    <optgroup label="── 🧬 ALK/ROS1/MET抑制剂 ──">
+                        <option value="20" data-ctx="ALK+NSCLC 二代" data-class="ALK">阿来替尼（安圣莎）· 20万/年</option>
+                        <option value="25" data-ctx="ALK+NSCLC 三代" data-class="ALK">洛拉替尼（Lorbrena）· 25万/年</option>
+                        <option value="12" data-ctx="ALK+NSCLC 国产" data-class="ALK">恩沙替尼（贝美纳）· 12万/年 国产</option>
+                        <option value="18" data-ctx="MET外显子14跳变NSCLC" data-class="MET">卡马替尼（Tabrecta）· 18万/年</option>
+                        <option value="15" data-ctx="MET外显子14跳变NSCLC" data-class="MET">谷美替尼（安健宁）· 15万/年 国产</option>
+                    </optgroup>
+                    <optgroup label="── ⚡ KRAS抑制剂（新机制）──">
+                        <option value="28" data-ctx="KRAS G12C突变NSCLC/结直肠癌" data-class="KRAS">索托拉西布（Lumakras）· 28万/年</option>
+                        <option value="30" data-ctx="KRAS G12C突变NSCLC/结直肠癌" data-class="KRAS">阿达格拉西布（Krazati）· 30万/年</option>
+                    </optgroup>
+                    <optgroup label="── 🏆 HER2靶向治疗 ──">
+                        <option value="5" data-ctx="HER2+乳腺癌/胃癌（医保后）" data-class="HER2单抗">曲妥珠单抗（赫赛汀/国产）· 5万/年</option>
+                        <option value="18" data-ctx="HER2+乳腺癌/胃癌" data-class="HER2单抗">帕妥珠单抗（帕捷特）· 18万/年</option>
+                        <option value="15" data-ctx="HER2+乳腺癌" data-class="HER2 TKI">吡咯替尼（艾瑞妮）· 15万/年 国产</option>
+                        <option value="12" data-ctx="HER2+乳腺癌" data-class="HER2 TKI">奈拉替尼（Nerlynx）· 12万/年</option>
+                        <option value="20" data-ctx="HER2+乳腺癌" data-class="HER2 TKI">图卡替尼（Tukysa）· 20万/年</option>
+                    </optgroup>
+                    <optgroup label="── 🌟 CAR-T/细胞疗法 ──">
+                        <option value="120" data-ctx="复发/难治多发性骨髓瘤（BCMA）" data-class="CAR-T">西达基奥仑赛（Carvykti）· 120万/疗程</option>
+                        <option value="120" data-ctx="复发/难治LBCL（CD19）" data-class="CAR-T">阿基仑赛（奕凯达）· 120万/疗程</option>
+                        <option value="100" data-ctx="复发/难治LBCL（CD19）" data-class="CAR-T">瑞基仑赛（倍诺达）· 100万/疗程 国产</option>
+                        <option value="80" data-ctx="复发/难治MM（BCMA）" data-class="CAR-T">伊基奥仑赛（FasT CAR-T）· 80万/疗程 国产</option>
+                    </optgroup>
+                    <optgroup label="── 💜 BCMA/CD38/多发性骨髓瘤 ──">
+                        <option value="30" data-ctx="复发/难治多发性骨髓瘤" data-class="CD38单抗">达雷妥尤单抗（Darzalex）· 30万/年</option>
+                        <option value="20" data-ctx="复发/难治多发性骨髓瘤" data-class="CD38单抗">伊沙妥昔单抗（Sarclisa）· 20万/年</option>
+                        <option value="35" data-ctx="MM（BCMA双特异性抗体）" data-class="BsAb">特立妥单抗（Tecvayli）· 35万/年</option>
+                    </optgroup>
+                    <optgroup label="── 🔶 BRAF/MEK/RET抑制剂 ──">
+                        <option value="20" data-ctx="BRAF V600E突变黑色素瘤" data-class="BRAF">维莫非尼（Zelboraf）· 20万/年</option>
+                        <option value="35" data-ctx="BRAF V600突变联合靶向" data-class="BRAF+MEK">达拉非尼+曲美替尼（联合方案）· 35万/年</option>
+                        <option value="22" data-ctx="RET融合/突变肺癌/甲状腺癌" data-class="RET">普雷西替尼（Gavreto）· 22万/年</option>
+                        <option value="18" data-ctx="NTRK融合肿瘤" data-class="NTRK">拉罗替尼（Vitrakvi）· 18万/年</option>
+                    </optgroup>
+                    <optgroup label="── ⭕ 血液肿瘤靶向（其他）──">
+                        <option value="22" data-ctx="FLT3突变AML" data-class="FLT3">吉瑞替尼（Xospata）· 22万/年</option>
+                        <option value="18" data-ctx="IDH2突变AML" data-class="IDH">恩西地平（Idhifa）· 18万/年</option>
+                        <option value="15" data-ctx="CLL/AML（BCL-2抑制剂）" data-class="BCL-2">维奈托克（唯可来）· 15万/年</option>
+                        <option value="25" data-ctx="Ph+CML（三代BCR-ABL）" data-class="BCR-ABL">普纳替尼（Iclusig）· 25万/年</option>
+                        <option value="28" data-ctx="复发/难治CLL（PI3K）" data-class="PI3K">艾代拉里斯（Zydelig）· 28万/年</option>
+                    </optgroup>
+                    <optgroup label="── 🔧 自定义 ──">
+                        <option value="custom" data-ctx="自定义适应症" data-class="自定义">自定义基准价格...</option>
+                    </optgroup>
+                </select>
+
+                <div id="customPriceInput" style="display:none; margin-top:9px;">
+                    <input type="number" id="customPrice" placeholder="输入年治疗费用（万元）"
+                        style="width:100%; padding:8px 10px; border:1.5px solid #d1d5db; border-radius:6px; font-size:12.5px; font-family:inherit;">
+                </div>
+
+                <div class="comp-meta">
+                    <span>📌 基准价: <strong id="basePriceDisplay">36.5</strong> 万元/年</span>
+                    <span>🏷️ 分类: <strong id="classDisplay">ADC</strong></span>
+                    <span>🏥 适应症: <strong id="ctxDisplay">HER2+乳腺癌</strong></span>
+                </div>
+            </div>
+
+            <!-- ── VALUE PREMIUM ── -->
+            <div class="card">
+                <div class="card-hd" onclick="toggleCard('valueSection')">
+                    <div class="card-hd-left">💎 <span style="color:#1e40af;">价值溢价 (Value Premium)</span></div>
+                    <div style="display:flex;align-items:center;gap:7px;">
+                        <span class="score-badge score-blue" id="valueScore">0分</span>
+                        <span style="color:#9ca3af;font-size:11px;" id="arrow_valueSection">▾</span>
+                    </div>
+                </div>
+                <div class="card-body" id="valueSection">
+
+                    <!-- SD Feedback Banner -->
+                    <div class="sd-banner" id="sdBanner">
+                        <span style="font-size:16px;">🔗</span>
+                        <span><strong>SD模型联动已激活</strong>：新机制认证（SAKIGAKE）按论文Table 2规则自动加权 新作用部位(+2) 和 新靶点(+1)，形成正向反馈环</span>
+                    </div>
+
+                    <!-- Dimension 1 -->
+                    <div class="sub-title">① 新的临床有用机制（New Clinically Useful Mechanism）</div>
+                    <div class="cb-grid">
+                        <div class="cb-item hot" id="item_newActionPart">
+                            <input type="checkbox" id="newActionPart" onchange="calculate()">
+                            <label for="newActionPart">新作用部位 (New Action Part)
+                                <span class="tag tag-w">+2分</span>
+                                <span class="tag tag-hot">🔥最高敏感</span>
+                            </label>
+                        </div>
+                        <div class="cb-item" id="item_newTarget">
+                            <input type="checkbox" id="newTarget" onchange="calculate()">
+                            <label for="newTarget">新靶点/新机制 (New Target)
+                                <span class="tag tag-w">+1分</span>
+                            </label>
+                        </div>
+                        <div class="cb-item hot" id="item_noStandard">
+                            <input type="checkbox" id="noStandard" onchange="calculate()">
+                            <label for="noStandard">无标准治疗的严重疾病
+                                <span class="tag tag-w">+1分</span>
+                                <span class="tag tag-hot">🔥高敏感</span>
+                            </label>
+                        </div>
+                        <div class="cb-item hot" id="item_nhsAccreditation1">
+                            <input type="checkbox" id="nhsAccreditation1" onchange="calculate()">
+                            <label for="nhsAccreditation1">国家/权威认证（突破性疗法等）
+                                <span class="tag tag-w">+1分</span>
+                                <span class="tag tag-hot">🔥高敏感</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Dimension 2 -->
+                    <div class="sub-title">② 相比对照药更有效/安全（Efficacy & Safety vs. Comparator）</div>
+                    <div class="cb-grid">
+                        <div class="cb-item hot" id="item_betterEfficacy">
+                            <input type="checkbox" id="betterEfficacy" onchange="calculate()">
+                            <label for="betterEfficacy">疗效显著优于对照药（OS/PFS↑）
+                                <span class="tag tag-w">+2分</span>
+                                <span class="tag tag-hot">🔥高敏感</span>
+                            </label>
+                        </div>
+                        <div class="cb-item" id="item_betterSafety">
+                            <input type="checkbox" id="betterSafety" onchange="calculate()">
+                            <label for="betterSafety">安全性/耐受性优于对照药
+                                <span class="tag tag-w">+1分</span>
+                            </label>
+                        </div>
+                        <div class="cb-item" id="item_rctEvidence">
+                            <input type="checkbox" id="rctEvidence" onchange="calculate()">
+                            <label for="rctEvidence">RCT随机对照试验高质量证据
+                                <span class="tag tag-w">+2分</span>
+                            </label>
+                        </div>
+                        <div class="cb-item" id="item_otherEvidence">
+                            <input type="checkbox" id="otherEvidence" onchange="calculate()">
+                            <label for="otherEvidence">真实世界证据（RWE）支持
+                                <span class="tag tag-w">+1分</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Dimension 3 -->
+                    <div class="sub-title">③ 改善疾病治疗方法（Improvement of Disease Treatment）</div>
+                    <div class="cb-grid">
+                        <div class="cb-item" id="item_poorOutcome">
+                            <input type="checkbox" id="poorOutcome" onchange="calculate()">
+                            <label for="poorOutcome">惠及预后不良患者群体
+                                <span class="tag tag-w">+1分</span>
+                            </label>
+                        </div>
+                        <div class="cb-item" id="item_standardOption">
+                            <input type="checkbox" id="standardOption" onchange="calculate()">
+                            <label for="standardOption">成为标准治疗（SoC）选择
+                                <span class="tag tag-w">+1分</span>
+                            </label>
+                        </div>
+                        <div class="cb-item hot" id="item_fastOnset">
+                            <input type="checkbox" id="fastOnset" onchange="calculate()">
+                            <label for="fastOnset">更快起效/更持久效果
+                                <span class="tag tag-w">+1分</span>
+                                <span class="tag tag-hot">🔥高敏感</span>
+                            </label>
+                        </div>
+                        <div class="cb-item hot" id="item_combination">
+                            <input type="checkbox" id="combination" onchange="calculate()">
+                            <label for="combination">联合用药增强疗效（Combo）
+                                <span class="tag tag-w">+1分</span>
+                                <span class="tag tag-hot">🔥最高敏感</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Dimension 4 -->
+                    <div class="sub-title">④ 制剂改进提升有用性（Formulation Improvements）</div>
+                    <div class="cb-grid">
+                        <div class="cb-item" id="item_lessInvasive">
+                            <input type="checkbox" id="lessInvasive" onchange="calculate()">
+                            <label for="lessInvasive">降低给药侵入性（口服 vs. 注射）
+                                <span class="tag tag-w">+1分</span>
+                            </label>
+                        </div>
+                        <div class="cb-item" id="item_easyAdmin">
+                            <input type="checkbox" id="easyAdmin" onchange="calculate()">
+                            <label for="easyAdmin">便利给药（长效/皮下注射等）
+                                <span class="tag tag-w">+1分</span>
+                            </label>
+                        </div>
+                        <div class="cb-item" id="item_stableLevel">
+                            <input type="checkbox" id="stableLevel" onchange="calculate()">
+                            <label for="stableLevel">血药浓度稳定（PK优化）
+                                <span class="tag tag-w">+1分</span>
+                            </label>
+                        </div>
+                        <div class="cb-item" id="item_nhsAccreditation2">
+                            <input type="checkbox" id="nhsAccreditation2" onchange="calculate()">
+                            <label for="nhsAccreditation2">制剂/工艺创新认证
+                                <span class="tag tag-w">+1分</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── SAKIGAKE PREMIUM ── -->
+            <div class="card">
+                <div class="card-hd" onclick="toggleCard('sakigakeSection')">
+                    <div class="card-hd-left" style="color:var(--violet);">🚀 SAKIGAKE溢价（突破性疗法认定）</div>
+                    <div style="display:flex;align-items:center;gap:7px;">
+                        <span class="score-badge score-violet" id="sakigakeScore">0分</span>
+                        <span style="color:#9ca3af;font-size:11px;" id="arrow_sakigakeSection">▸</span>
+                    </div>
+                </div>
+                <div class="card-body" id="sakigakeSection" style="display:none;">
+                    <div class="saki-note">
+                        💡 SAKIGAKE = 中国<strong>突破性疗法认定</strong>（BTD），认定后可触发对价值维度的SD联动反馈（论文Fig.2因果环）。溢价区间：≥6分→<strong>20%</strong>，4-5分→<strong>15%</strong>，2-3分→<strong>10%</strong>
+                    </div>
+                    <div class="cb-grid">
+                        <div class="cb-item hot sd-link" id="item_sakiMechanism">
+                            <input type="checkbox" id="sakiMechanism" onchange="handleSakigake()">
+                            <label for="sakiMechanism">新机制药物（First-in-class）
+                                <span class="tag tag-w">+2分</span>
+                                <span class="tag tag-sd">🔗SD联动</span>
+                            </label>
+                        </div>
+                        <div class="cb-item" id="item_majorDisease">
+                            <input type="checkbox" id="majorDisease" onchange="calculate()">
+                            <label for="majorDisease">重大疾病（肿瘤/罕见病）
+                                <span class="tag tag-w">+2分</span>
+                            </label>
+                        </div>
+                        <div class="cb-item hot" id="item_significantImprove">
+                            <input type="checkbox" id="significantImprove" onchange="calculate()">
+                            <label for="significantImprove">显著疗效改善（OS延长≥3月等）
+                                <span class="tag tag-w">+2分</span>
+                            </label>
+                        </div>
+                        <div class="cb-item" id="item_globalSync">
+                            <input type="checkbox" id="globalSync" onchange="calculate()">
+                            <label for="globalSync">全球同步/中国首发上市
+                                <span class="tag tag-w">+2分</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── MARKETABILITY PREMIUM ── -->
+            <div class="card">
+                <div class="card-hd" onclick="toggleCard('marketSection')">
+                    <div class="card-hd-left" style="color:var(--warning);">📈 市场性溢价（Marketability & Pediatric）</div>
+                    <div style="display:flex;align-items:center;gap:7px;">
+                        <span class="score-badge score-amber" id="marketScore">0分</span>
+                        <span style="color:#9ca3af;font-size:11px;" id="arrow_marketSection">▸</span>
+                    </div>
+                </div>
+                <div class="card-body" id="marketSection" style="display:none;">
+                    <div class="cb-grid" style="grid-template-columns:1fr;">
+                        <div class="cb-item">
+                            <input type="checkbox" id="orphanDrug" onchange="calculate()">
+                            <label for="orphanDrug">🌟 孤儿药认定（罕见病/罕见肿瘤，患病率＜1/10000）
+                                <span class="tag tag-w">市场性溢价I: 10-20%（取中值15%）</span>
+                            </label>
+                        </div>
+                        <div class="cb-item">
+                            <input type="checkbox" id="smallMarket" onchange="calculate()">
+                            <label for="smallMarket">📉 小市场规模适应症（Niche Indication，患者数少）
+                                <span class="tag tag-w">市场性溢价II: 5%</span>
+                            </label>
+                        </div>
+                        <div class="cb-item">
+                            <input type="checkbox" id="pediatric" onchange="calculate()">
+                            <label for="pediatric">👶 儿科适应症/儿童肿瘤用法（含儿童罕见肿瘤）
+                                <span class="tag tag-w">儿科溢价: 5-20%（取中值12.5%）</span>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="market-note">
+                        📊 论文敏感度排序：<strong>罕见病药物 &gt; 儿童药物 &gt; 小市场药物</strong>（SAKIGAKE认证后5年内联动带动市场溢价提升）
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── CHINA NRDL CONTEXT ── -->
+            <div class="card">
+                <div class="card-hd" onclick="toggleCard('chinaSection')">
+                    <div class="card-hd-left" style="color:var(--danger);">🇨🇳 中国医保情境（NRDL谈判调整）</div>
+                    <span style="color:#9ca3af;font-size:11px;" id="arrow_chinaSection">▸</span>
+                </div>
+                <div class="card-body" id="chinaSection" style="display:none;">
+                    <div class="slider-group">
+                        <div class="slider-label">
+                            <span>NRDL谈判降价幅度</span>
+                            <strong id="nrdlDiscountDisplay" style="color:var(--danger);">50%</strong>
+                        </div>
+                        <input type="range" id="nrdlDiscount" min="15" max="80" value="50" step="5"
+                            oninput="updateSlider('nrdlDiscount','nrdlDiscountDisplay','%')">
+                        <div class="slider-ticks">
+                            <span>15%（优质创新）</span>
+                            <span>50%（历史均值）</span>
+                            <span>80%（高竞争）</span>
+                        </div>
+                    </div>
+                    <div class="slider-group">
+                        <div class="slider-label">
+                            <span>预计医保准入概率</span>
+                            <strong id="nrdlProbDisplay" style="color:var(--success);">70%</strong>
+                        </div>
+                        <input type="range" id="nrdlProb" min="10" max="100" value="70" step="10"
+                            oninput="updateSlider('nrdlProb','nrdlProbDisplay','%')">
+                        <div class="slider-ticks">
+                            <span>10%（难度高）</span>
+                            <span>70%（中性预期）</span>
+                            <span>100%（确定准入）</span>
+                        </div>
+                    </div>
+                    <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:6px; padding:8px 10px; font-size:11px; color:#166534; margin-top:4px;">
+                        📌 <strong>参考数据：</strong>中国历届NRDL谈判平均降幅约50-60%（2017-2024），肿瘤药优先考量临床价值和未满足需求；创新性强的药物通常降幅较低（30-40%）
+                    </div>
+                </div>
+            </div>
+
+            <button class="btn-calc" onclick="calculate()">🔄 计算综合溢价系数</button>
+            <button class="btn-reset" onclick="resetAll()">↺ 清空所有选项</button>
+        </div>
+
+        <!-- ══════════════════════════════════════════
+             RIGHT: RESULT SECTION
+        ══════════════════════════════════════════ -->
+        <div class="result-section">
+
+            <!-- Hero Coefficient -->
+            <div class="result-hero">
+                <div class="hero-label">综合溢价系数 (Premium Coefficient)</div>
+                <div class="hero-coeff" id="totalCoefficient">1.00</div>
+                <div class="hero-sub">较可比药物溢价 <span id="premiumPctDisplay">+0.0%</span></div>
+            </div>
+
+            <!-- Radar Chart -->
+            <div class="radar-card">
+                <div class="radar-title">📡 五维度溢价雷达图</div>
+                <svg id="radarSvg" viewBox="0 0 300 270" style="width:100%;max-height:200px;display:block;margin:0 auto;"></svg>
+            </div>
+
+            <!-- Price Range -->
+            <div>
+                <div class="price-section-hd">💰 建议年治疗费用 · 基于可比药 <span id="basePriceDisplay2">36.5</span> 万元</div>
+                <div class="price-grid-3">
+                    <div class="pbox cons">
+                        <div class="pbox-lbl">保守 P25</div>
+                        <div class="pbox-val" id="conservativePrice">36.5万</div>
+                    </div>
+                    <div class="pbox base">
+                        <div class="pbox-lbl">基准 P50</div>
+                        <div class="pbox-val" id="basePrice">36.5万</div>
+                    </div>
+                    <div class="pbox opti">
+                        <div class="pbox-lbl">乐观 P75</div>
+                        <div class="pbox-val" id="optimisticPrice">36.5万</div>
+                    </div>
+                </div>
+                <div class="nrdl-hd" style="margin-top:10px;">🏥 中国NRDL医保情境参考</div>
+                <div class="price-grid-2">
+                    <div class="pbox nrdl">
+                        <div class="pbox-lbl">谈判后挂网价</div>
+                        <div class="pbox-val" id="nrdlPrice">18.3万</div>
+                    </div>
+                    <div class="pbox exp">
+                        <div class="pbox-lbl">期望收益（概率加权）</div>
+                        <div class="pbox-val" id="expectedPrice">—</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Breakdown -->
+            <div class="breakdown-card">
+                <div class="bk-hd">📋 溢价拆解分析（论文公式 Table 2）</div>
+                <div class="bk-row">
+                    <span class="bk-name">💎 价值溢价 (系数 ×1.8)</span>
+                    <span class="bk-val zero" id="valuePremiumPct">0%</span>
+                </div>
+                <div class="bk-row">
+                    <span class="bk-name">🚀 SAKIGAKE溢价 (系数 ×1.15)</span>
+                    <span class="bk-val zero" id="sakigakePremiumPct">0%</span>
+                </div>
+                <div class="bk-row">
+                    <span class="bk-name">🌟 市场性溢价I-孤儿药 (系数 ×1.15)</span>
+                    <span class="bk-val zero" id="market1Pct">0%</span>
+                </div>
+                <div class="bk-row">
+                    <span class="bk-name">📉 市场性溢价II-小市场 (系数 ×1.05)</span>
+                    <span class="bk-val zero" id="market2Pct">0%</span>
+                </div>
+                <div class="bk-row">
+                    <span class="bk-name">👶 儿科溢价 (系数 ×1.125)</span>
+                    <span class="bk-val zero" id="pediatricPct">0%</span>
+                </div>
+                <div class="bk-row">
+                    <span class="bk-name" style="font-size:13px;color:var(--primary);">∑ 合计加权系数</span>
+                    <span class="bk-val total" id="weightedTotal">1.000</span>
+                </div>
+            </div>
+
+            <!-- Sensitivity Bars -->
+            <div class="sens-section">
+                <div class="sens-title">🔥 关键变量敏感度排序（来自论文单因素敏感性分析）</div>
+                <div class="sens-row">
+                    <span class="sens-lbl">联合用药疗效</span>
+                    <div class="sens-bar"><div class="sens-fill" style="width:96%"></div></div>
+                    <span class="sens-val">最高</span>
+                </div>
+                <div class="sens-row">
+                    <span class="sens-lbl">更快起效机制</span>
+                    <div class="sens-bar"><div class="sens-fill" style="width:91%"></div></div>
+                    <span class="sens-val">极高</span>
+                </div>
+                <div class="sens-row">
+                    <span class="sens-lbl">新作用部位</span>
+                    <div class="sens-bar"><div class="sens-fill" style="width:88%"></div></div>
+                    <span class="sens-val">极高</span>
+                </div>
+                <div class="sens-row">
+                    <span class="sens-lbl">国家认证加分</span>
+                    <div class="sens-bar"><div class="sens-fill" style="width:83%"></div></div>
+                    <span class="sens-val">高</span>
+                </div>
+                <div class="sens-row">
+                    <span class="sens-lbl">无标准治疗</span>
+                    <div class="sens-bar"><div class="sens-fill" style="width:78%"></div></div>
+                    <span class="sens-val">高</span>
+                </div>
+                <div class="sens-row">
+                    <span class="sens-lbl">疗效优于对照</span>
+                    <div class="sens-bar"><div class="sens-fill" style="width:75%"></div></div>
+                    <span class="sens-val">高</span>
+                </div>
+                <div class="sens-row">
+                    <span class="sens-lbl">新机制(SAKIGAKE)</span>
+                    <div class="sens-bar"><div class="sens-fill" style="width:70%"></div></div>
+                    <span class="sens-val">中高</span>
+                </div>
+                <div class="sens-row">
+                    <span class="sens-lbl">罕见病药物</span>
+                    <div class="sens-bar"><div class="sens-fill" style="width:65%"></div></div>
+                    <span class="sens-val">中高</span>
+                </div>
+            </div>
+
+            <!-- Note -->
+            <div class="note">
+                <strong>💡 SD模型核心结论：</strong><br>
+                价值维度权重<strong>1.8</strong>最高（长期增长最快）；SAKIGAKE认证对新机制存在正向反馈，带动价值溢价提升。论文50年模拟显示政策效应约<strong>5年后显著放大</strong>，罕见病和小市场药物长期价值增长最为突出。
+            </div>
+
+            <!-- Formula -->
+            <div class="formula">
+                <strong>SD计算公式（Xing et al., 2025 Table 2）：</strong><br>
+                Variation = <strong>1.8</strong>×Value + <strong>1.15</strong>×SAKIGAKE<br>
+                &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;+ <strong>1.15</strong>×OrphanDrug + <strong>1.05</strong>×SmallMkt + <strong>1.125</strong>×Pediatric<br>
+                SD联动规则：NewMechanism → NewActionPart(+2) + NewTarget(+1)<br>
+                Value溢价范围：5%–120%（突破性最高120%）
+            </div>
+
+        </div><!-- end result-section -->
+    </div><!-- end main-content -->
+</div><!-- end container -->
+
+<script>
+// ─────────────────────────────────────────────────────────────────
+// WEIGHTS (from paper Table 2 scoring)
+// ─────────────────────────────────────────────────────────────────
+const W = {
+    newActionPart: 2, newTarget: 1, noStandard: 1, nhsAccreditation1: 1,
+    betterEfficacy: 2, betterSafety: 1, rctEvidence: 2, otherEvidence: 1,
+    poorOutcome: 1, standardOption: 1, fastOnset: 1, combination: 1,
+    lessInvasive: 1, easyAdmin: 1, stableLevel: 1, nhsAccreditation2: 1,
+    sakiMechanism: 2, majorDisease: 2, significantImprove: 2, globalSync: 2
+};
+
+const VALUE_IDS = ['newActionPart','newTarget','noStandard','nhsAccreditation1',
+                   'betterEfficacy','betterSafety','rctEvidence','otherEvidence',
+                   'poorOutcome','standardOption','fastOnset','combination',
+                   'lessInvasive','easyAdmin','stableLevel','nhsAccreditation2'];
+const SAKI_IDS  = ['sakiMechanism','majorDisease','significantImprove','globalSync'];
+
+let basePrice = 36.5;
+let sdActive   = false;
+
+// ─────────────────────────────────────────────────────────────────
+// UI HELPERS
+// ─────────────────────────────────────────────────────────────────
+function toggleCard(id) {
+    const body  = document.getElementById(id);
+    const arrow = document.getElementById('arrow_' + id);
+    const isOpen = body.style.display !== 'none';
+    body.style.display = isOpen ? 'none' : 'block';
+    if (arrow) arrow.textContent = isOpen ? '▸' : '▾';
+}
+
+function updateSlider(sid, did, unit) {
+    document.getElementById(did).textContent = document.getElementById(sid).value + unit;
+    calculate();
+}
+
+function updateComparator() {
+    const sel = document.getElementById('comparatorSelect');
+    const opt = sel.options[sel.selectedIndex];
+
+    if (sel.value === 'custom') {
+        document.getElementById('customPriceInput').style.display = 'block';
+        basePrice = parseFloat(document.getElementById('customPrice').value) || 0;
+    } else {
+        document.getElementById('customPriceInput').style.display = 'none';
+        basePrice = parseFloat(sel.value);
+    }
+
+    document.getElementById('basePriceDisplay').textContent  = basePrice;
+    document.getElementById('basePriceDisplay2').textContent = basePrice;
+
+    const ctx   = opt.dataset.ctx   || '—';
+    const cls   = opt.dataset.class || '—';
+    document.getElementById('ctxDisplay').textContent   = ctx;
+    document.getElementById('classDisplay').textContent = cls;
+    calculate();
+}
+
+document.getElementById('customPrice').addEventListener('input', function() {
+    basePrice = parseFloat(this.value) || 0;
+    document.getElementById('basePriceDisplay').textContent  = basePrice;
+    document.getElementById('basePriceDisplay2').textContent = basePrice;
+    calculate();
+});
+
+// ─────────────────────────────────────────────────────────────────
+// SD FEEDBACK LOOP (Paper Table 2 causal diagram)
+// New Mechanism (SAKIGAKE) → New Action Part (+2) + New Target (+1)
+// ─────────────────────────────────────────────────────────────────
+function handleSakigake() {
+    sdActive = document.getElementById('sakiMechanism').checked;
+    const banner = document.getElementById('sdBanner');
+    const itemAP = document.getElementById('item_newActionPart');
+    const itemNT = document.getElementById('item_newTarget');
+    const cbAP   = document.getElementById('newActionPart');
+    const cbNT   = document.getElementById('newTarget');
+
+    if (sdActive) {
+        banner.classList.add('on');
+        itemAP.classList.add('sd-link');
+        itemNT.classList.add('sd-link');
+        // Auto-check per SD model equation: new_action_part = 2 + new_mechanism
+        cbAP.checked = true;
+        cbNT.checked = true;
+    } else {
+        banner.classList.remove('on');
+        itemAP.classList.remove('sd-link');
+        itemNT.classList.remove('sd-link');
+    }
+    calculate();
+}
+
+// ─────────────────────────────────────────────────────────────────
+// RESET
+// ─────────────────────────────────────────────────────────────────
+function resetAll() {
+    document.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
+    document.getElementById('sdBanner').classList.remove('on');
+    document.getElementById('item_newActionPart').classList.remove('sd-link');
+    document.getElementById('item_newTarget').classList.remove('sd-link');
+    sdActive = false;
+    document.getElementById('nrdlDiscount').value = 50;
+    document.getElementById('nrdlDiscountDisplay').textContent = '50%';
+    document.getElementById('nrdlProb').value = 70;
+    document.getElementById('nrdlProbDisplay').textContent = '70%';
+    calculate();
+}
+
+// ─────────────────────────────────────────────────────────────────
+// RADAR CHART (SVG)
+// ─────────────────────────────────────────────────────────────────
+function drawRadar(scores) {
+    // scores: [value(0-1.2), saki(0-0.2), m1(0-0.2), m2(0-0.05), ped(0-0.2)]
+    // Normalize each to 0-1
+    const norms = [
+        Math.min(scores[0] / 1.2, 1),
+        Math.min(scores[1] / 0.20, 1),
+        Math.min(scores[2] / 0.20, 1),
+        Math.min(scores[3] / 0.05, 1),
+        Math.min(scores[4] / 0.20, 1)
+    ];
+
+    const svg  = document.getElementById('radarSvg');
+    const cx   = 150, cy = 135, R = 95;
+    const n    = 5;
+    const lbls = ['价值溢价','SAKIGAKE','孤儿药溢价','小市场溢价','儿科溢价'];
+    const cols = ['#3b82f6','#7c3aed','#f59e0b','#10b981','#ef4444'];
+    const pcts = [scores[0]*100, scores[1]*100, scores[2]*100, scores[3]*100, scores[4]*100];
+
+    let html = '';
+
+    // Grid polygons
+    [0.25, 0.5, 0.75, 1.0].forEach(lv => {
+        const pts = Array.from({length: n}, (_,i) => {
+            const a = (2*Math.PI*i/n) - Math.PI/2;
+            return [cx + R*lv*Math.cos(a), cy + R*lv*Math.sin(a)].join(',');
+        }).join(' ');
+        html += `<polygon points="${pts}" fill="none" stroke="#e5e7eb" stroke-width="1"/>`;
+    });
+
+    // Axes
+    for (let i = 0; i < n; i++) {
+        const a = (2*Math.PI*i/n) - Math.PI/2;
+        html += `<line x1="${cx}" y1="${cy}" x2="${cx+R*Math.cos(a)}" y2="${cy+R*Math.sin(a)}" stroke="#d1d5db" stroke-width="1"/>`;
+    }
+
+    // Data polygon
+    const dataPts = Array.from({length: n}, (_,i) => {
+        const a = (2*Math.PI*i/n) - Math.PI/2;
+        const r = R * norms[i];
+        return [cx + r*Math.cos(a), cy + r*Math.sin(a)].join(',');
+    }).join(' ');
+    html += `<polygon points="${dataPts}" fill="rgba(59,130,246,0.18)" stroke="#3b82f6" stroke-width="2"/>`;
+
+    // Data points + labels
+    for (let i = 0; i < n; i++) {
+        const a  = (2*Math.PI*i/n) - Math.PI/2;
+        const px = cx + R*norms[i]*Math.cos(a);
+        const py = cy + R*norms[i]*Math.sin(a);
+        const lx = cx + (R+26)*Math.cos(a);
+        const ly = cy + (R+26)*Math.sin(a);
+        const anch = lx < cx-5 ? 'end' : lx > cx+5 ? 'start' : 'middle';
+
+        html += `<circle cx="${px.toFixed(1)}" cy="${py.toFixed(1)}" r="4" fill="${cols[i]}" stroke="white" stroke-width="1.5"/>`;
+        html += `<text x="${lx.toFixed(1)}" y="${(ly-7).toFixed(1)}" text-anchor="${anch}" dominant-baseline="middle" font-size="9.5" fill="#374151" font-weight="600">${lbls[i]}</text>`;
+        html += `<text x="${lx.toFixed(1)}" y="${(ly+5).toFixed(1)}" text-anchor="${anch}" dominant-baseline="middle" font-size="9" fill="${cols[i]}" font-weight="700">${pcts[i].toFixed(1)}%</text>`;
+    }
+
+    svg.innerHTML = html;
+}
+
+// ─────────────────────────────────────────────────────────────────
+// MAIN CALCULATION
+// ─────────────────────────────────────────────────────────────────
+function calculate() {
+
+    // 1. Value Score (max theoretical ~19, normalize to 10, cap 120%)
+    let vScore = 0;
+    VALUE_IDS.forEach(id => {
+        const el = document.getElementById(id);
+        if (el && el.checked) vScore += W[id];
+    });
+    const valuePR  = vScore > 0 ? Math.max(0.05, Math.min(vScore / 10, 1.2)) : 0;
+
+    // 2. SAKIGAKE Score → tiered ratio
+    let sScore = 0;
+    SAKI_IDS.forEach(id => {
+        const el = document.getElementById(id);
+        if (el && el.checked) sScore += W[id];
+    });
+    const sakiR = sScore >= 6 ? 0.20 : sScore >= 4 ? 0.15 : sScore >= 2 ? 0.10 : 0;
+
+    // 3. Marketability
+    const orphan = document.getElementById('orphanDrug').checked;
+    const small  = document.getElementById('smallMarket').checked;
+    const pedi   = document.getElementById('pediatric').checked;
+    const m1R    = orphan ? 0.15  : 0;   // 10-20% → 15%
+    const m2R    = small  ? 0.05  : 0;
+    const pedR   = pedi   ? 0.125 : 0;   // 5-20% → 12.5%
+
+    // 4. Weighted coefficient (paper Table 2 formula)
+    const wV  = 1.8   * valuePR;
+    const wS  = 1.15  * sakiR;
+    const wM1 = 1.15  * m1R;
+    const wM2 = 1.05  * m2R;
+    const wP  = 1.125 * pedR;
+    const totalCoeff = 1 + wV + wS + wM1 + wM2 + wP;
+
+    // 5. Price range (scenario analysis)
+    const consCoeff = 1 + wV*0.70 + wS*0.50 + wM1*0.60 + wM2*0.80 + wP*0.50;
+    const optiCoeff = 1 + wV*1.20 + wS*1.20 + wM1*1.30 + wM2*1.20 + wP*1.50;
+
+    const pBase = basePrice * totalCoeff;
+    const pCons = basePrice * consCoeff;
+    const pOpti = basePrice * optiCoeff;
+
+    // 6. China NRDL
+    const disc    = parseFloat(document.getElementById('nrdlDiscount').value) / 100;
+    const prob    = parseFloat(document.getElementById('nrdlProb').value)    / 100;
+    const pNrdl   = pBase * (1 - disc);
+    const pExpect = pNrdl * prob + pBase * (1 - prob);
+
+    // ── UPDATE UI ──
+
+    // Scores
+    document.getElementById('valueScore').textContent    = vScore + '分';
+    document.getElementById('sakigakeScore').textContent = sScore + '分';
+    let mScore = 0;
+    if (orphan) mScore += 2;
+    if (small)  mScore += 1;
+    if (pedi)   mScore += 2;
+    document.getElementById('marketScore').textContent = mScore + '分';
+
+    // Hero
+    const premiumPct = ((totalCoeff - 1) * 100).toFixed(1);
+    document.getElementById('totalCoefficient').textContent = totalCoeff.toFixed(2);
+    document.getElementById('premiumPctDisplay').textContent = (totalCoeff >= 1 ? '+' : '') + premiumPct + '%';
+
+    // Prices
+    const fmt = v => v.toFixed(1) + '万';
+    document.getElementById('basePrice').textContent         = fmt(pBase);
+    document.getElementById('conservativePrice').textContent = fmt(pCons);
+    document.getElementById('optimisticPrice').textContent   = fmt(pOpti);
+    document.getElementById('nrdlPrice').textContent         = fmt(pNrdl);
+    document.getElementById('expectedPrice').textContent     = fmt(pExpect);
+
+    // Breakdown
+    const setBK = (id, val) => {
+        const el = document.getElementById(id);
+        el.textContent = (val * 100).toFixed(1) + '%';
+        el.className = 'bk-val' + (val === 0 ? ' zero' : '');
+    };
+    setBK('valuePremiumPct',   valuePR);
+    setBK('sakigakePremiumPct', sakiR);
+    setBK('market1Pct',         m1R);
+    setBK('market2Pct',         m2R);
+    setBK('pediatricPct',       pedR);
+    document.getElementById('weightedTotal').textContent = totalCoeff.toFixed(3);
+
+    // Checkbox visual states
+    document.querySelectorAll('.cb-item').forEach(item => {
+        const cb = item.querySelector('input[type="checkbox"]');
+        if (cb) item.classList.toggle('checked', cb.checked);
+    });
+
+    // Radar
+    drawRadar([valuePR, sakiR, m1R, m2R, pedR]);
+}
+
+// ─────────────────────────────────────────────────────────────────
+// INIT
+// ─────────────────────────────────────────────────────────────────
+updateComparator();
+calculate();
+</script>
+</body>
+</html>
