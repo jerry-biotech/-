@@ -1,0 +1,2270 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>潮药bar - 创新药定价决策系统</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+    <style>
+        /* ===== 全局重置与基础 ===== */
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --brand-primary: #1d4ed8;
+            --brand-secondary: #7c3aed;
+            --brand-accent: #ea580c;
+            --bg-gradient: linear-gradient(135deg, #eff6ff 0%, #f5f3ff 50%, #fdf4ff 100%);
+            --text-primary: #111827;
+            --text-secondary: #6b7280;
+            --card-bg: #ffffff;
+            --border-color: #e5e7eb;
+            --shadow: 0 10px 40px -10px rgba(0,0,0,0.15);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", Roboto, sans-serif;
+            background: var(--bg-gradient);
+            min-height: 100vh;
+            color: var(--text-primary);
+        }
+
+        /* ===== 首页导航样式 ===== */
+        .landing-page {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 40px 20px;
+            text-align: center;
+        }
+
+        .brand-header {
+            margin-bottom: 60px;
+        }
+
+        .brand-logo {
+            font-size: 48px;
+            font-weight: 900;
+            background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 50%, #7c3aed 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            letter-spacing: -2px;
+            margin-bottom: 16px;
+        }
+
+        .welcome-text {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 12px;
+        }
+
+        .subtitle {
+            font-size: 16px;
+            color: var(--text-secondary);
+            max-width: 600px;
+            line-height: 1.6;
+        }
+
+        .calculator-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+            gap: 24px;
+            max-width: 900px;
+            width: 100%;
+        }
+
+        .calc-card {
+            background: var(--card-bg);
+            border: 2px solid transparent;
+            border-radius: 20px;
+            padding: 40px 30px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .calc-card:hover {
+            transform: translateY(-5px);
+            box-shadow: var(--shadow);
+            border-color: var(--brand-primary);
+        }
+
+        .calc-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #1e3a8a, #3b82f6, #7c3aed);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .calc-card:hover::before {
+            opacity: 1;
+        }
+
+        .calc-icon {
+            font-size: 48px;
+            margin-bottom: 20px;
+        }
+
+        .calc-title {
+            font-size: 22px;
+            font-weight: 800;
+            margin-bottom: 12px;
+            color: var(--text-primary);
+        }
+
+        .calc-desc {
+            font-size: 14px;
+            color: var(--text-secondary);
+            line-height: 1.6;
+            margin-bottom: 20px;
+        }
+
+        .calc-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            justify-content: center;
+        }
+
+        .tag {
+            background: #f3f4f6;
+            color: #4b5563;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .tag.primary { background: #dbeafe; color: #1d4ed8; }
+        .tag.success { background: #d1fae5; color: #059669; }
+
+        /* ===== 计算器容器 ===== */
+        .calculator-container {
+            display: none;
+            background: #f1f5f9;
+            min-height: 100vh;
+        }
+
+        .nav-header {
+            background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 40%, #3730a3 100%);
+            color: white;
+            padding: 16px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 2px 8px rgba(0,0,0,.2);
+        }
+
+        .nav-header-left {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .back-btn {
+            background: rgba(255,255,255,0.15);
+            border: 1px solid rgba(255,255,255,0.3);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .back-btn:hover {
+            background: rgba(255,255,255,0.25);
+            transform: translateX(-2px);
+        }
+
+        .nav-brand {
+            font-size: 18px;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+        }
+
+        .nav-brand span {
+            opacity: 0.8;
+            font-weight: 400;
+        }
+
+        /* ===== 肿瘤计算器样式（隔离命名空间） ===== */
+        .tumor-calc {
+            --primary: #1d4ed8;
+            --primary-light: #dbeafe;
+            --primary-dark: #1e3a8a;
+            --violet: #7c3aed;
+            --violet-light: #ede9fe;
+            --success: #059669;
+            --warning: #d97706;
+            --warning-light: #fef3c7;
+            --danger: #dc2626;
+            --danger-light: #fef2f2;
+            --orange: #ea580c;
+            --gray-50: #f9fafb;
+            --gray-100: #f3f4f6;
+            --gray-200: #e5e7eb;
+            --gray-300: #d1d5db;
+            --gray-500: #6b7280;
+            --gray-700: #374151;
+            --gray-900: #111827;
+            --radius: 10px;
+            --shadow-sm: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
+            --shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px rgba(0,0,0,0.06);
+        }
+
+        .tumor-calc body-like {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", Roboto, sans-serif;
+            background: linear-gradient(135deg, #eff6ff 0%, #f5f3ff 50%, #fdf4ff 100%);
+            min-height: 100vh;
+            padding: 16px;
+            color: var(--gray-900);
+            font-size: 13px;
+        }
+
+        .tumor-calc .container {
+            max-width: 1440px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px -10px rgba(0,0,0,0.15);
+            overflow: hidden;
+        }
+
+        .tumor-calc .header {
+            background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 40%, #3b82f6 75%, #7c3aed 100%);
+            color: white;
+            padding: 22px 32px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        .tumor-calc .header-left h1 { font-size: 20px; font-weight: 800; margin-bottom: 5px; letter-spacing: -0.3px; }
+        .tumor-calc .header-left p { opacity: 0.8; font-size: 12px; }
+        .tumor-calc .header-badges { display: flex; gap: 8px; flex-wrap: wrap; }
+        .tumor-calc .hbadge {
+            background: rgba(255,255,255,0.15);
+            border: 1px solid rgba(255,255,255,0.25);
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+            white-space: nowrap;
+        }
+
+        .tumor-calc .main-content {
+            display: grid;
+            grid-template-columns: 1fr 430px;
+            min-height: 600px;
+        }
+
+        .tumor-calc .input-section {
+            padding: 20px 24px;
+            border-right: 1px solid var(--gray-200);
+            overflow-y: auto;
+            max-height: calc(100vh - 140px);
+        }
+
+        .tumor-calc .result-section {
+            background: var(--gray-50);
+            padding: 18px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            overflow-y: auto;
+            max-height: calc(100vh - 140px);
+        }
+
+        .tumor-calc .card {
+            background: white;
+            border: 1px solid var(--gray-200);
+            border-radius: var(--radius);
+            margin-bottom: 14px;
+            box-shadow: var(--shadow-sm);
+            overflow: hidden;
+        }
+
+        .tumor-calc .card-hd {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 11px 15px;
+            cursor: pointer;
+            user-select: none;
+            background: var(--gray-50);
+            border-bottom: 1px solid var(--gray-200);
+            transition: background 0.15s;
+        }
+        .tumor-calc .card-hd:hover { background: var(--gray-100); }
+        .tumor-calc .card-hd-left { display: flex; align-items: center; gap: 7px; font-weight: 700; font-size: 13px; }
+        .tumor-calc .card-body { padding: 14px 15px; }
+
+        .tumor-calc .score-badge {
+            padding: 2px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 700;
+        }
+        .tumor-calc .score-blue { background: var(--primary-light); color: var(--primary); }
+        .tumor-calc .score-violet { background: var(--violet-light); color: var(--violet); }
+        .tumor-calc .score-amber { background: var(--warning-light); color: var(--warning); }
+
+        .tumor-calc .comparator-card {
+            background: linear-gradient(135deg, #eff6ff 0%, #f5f3ff 100%);
+            border: 2px solid #bfdbfe;
+            border-radius: var(--radius);
+            padding: 15px;
+            margin-bottom: 14px;
+        }
+        .tumor-calc .comparator-card > label {
+            display: block;
+            font-weight: 800;
+            font-size: 13px;
+            color: var(--primary-dark);
+            margin-bottom: 9px;
+        }
+
+        .tumor-calc select, .tumor-calc input {
+            width: 100%;
+            padding: 9px 11px;
+            border: 1.5px solid var(--gray-300);
+            border-radius: 7px;
+            font-size: 12.5px;
+            background: white;
+            cursor: pointer;
+            color: var(--gray-900);
+            outline: none;
+            transition: border-color 0.2s;
+            font-family: inherit;
+        }
+        .tumor-calc select:focus, .tumor-calc input:focus { border-color: var(--primary); }
+        .tumor-calc optgroup { font-weight: 700; }
+
+        .tumor-calc .comp-meta {
+            margin-top: 9px;
+            background: rgba(255,255,255,0.7);
+            border-radius: 6px;
+            padding: 7px 10px;
+            font-size: 12px;
+            color: var(--gray-700);
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        .tumor-calc .comp-meta strong { color: var(--primary); }
+
+        .tumor-calc .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 9px;
+        }
+        .tumor-calc .info-item label {
+            display: block;
+            font-size: 10.5px;
+            font-weight: 700;
+            color: var(--gray-500);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+        }
+        .tumor-calc .info-item select { font-size: 12px; padding: 7px 9px; }
+
+        .tumor-calc .sub-title {
+            font-size: 11px;
+            font-weight: 800;
+            color: var(--gray-500);
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            margin: 12px 0 7px;
+            padding-bottom: 4px;
+            border-bottom: 1.5px solid var(--gray-100);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .tumor-calc .cb-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
+        }
+
+        .tumor-calc .cb-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 7px;
+            padding: 8px 9px;
+            border: 1.5px solid var(--gray-200);
+            border-radius: 7px;
+            cursor: pointer;
+            transition: all 0.15s;
+            position: relative;
+        }
+        .tumor-calc .cb-item:hover { border-color: #93c5fd; background: #f0f9ff; }
+        .tumor-calc .cb-item.checked { border-color: var(--primary); background: #eff6ff; }
+        .tumor-calc .cb-item.hot { border-left: 3px solid var(--orange); }
+        .tumor-calc .cb-item.sd-link { border-left: 3px solid var(--violet); }
+
+        .tumor-calc .cb-item input[type="checkbox"] {
+            width: 14px;
+            height: 14px;
+            flex-shrink: 0;
+            cursor: pointer;
+            accent-color: var(--primary);
+            margin-top: 2px;
+        }
+        .tumor-calc .cb-item label {
+            font-size: 11.5px;
+            line-height: 1.4;
+            color: var(--gray-700);
+            cursor: pointer;
+            flex: 1;
+        }
+
+        .tumor-calc .tag {
+            display: inline-block;
+            font-size: 9.5px;
+            font-weight: 700;
+            padding: 1px 5px;
+            border-radius: 3px;
+            margin-left: 3px;
+            vertical-align: middle;
+        }
+        .tumor-calc .tag-w { background: #dbeafe; color: #1d4ed8; }
+        .tumor-calc .tag-hot { background: #fff7ed; color: #ea580c; }
+        .tumor-calc .tag-sd { background: #ede9fe; color: #7c3aed; }
+
+        .tumor-calc .sd-banner {
+            display: none;
+            background: linear-gradient(135deg, #ede9fe, #ddd6fe);
+            border: 1px solid #c4b5fd;
+            border-radius: 7px;
+            padding: 9px 12px;
+            margin-bottom: 10px;
+            font-size: 11.5px;
+            color: #5b21b6;
+            align-items: center;
+            gap: 8px;
+        }
+        .tumor-calc .sd-banner.on { display: flex; }
+
+        .tumor-calc .slider-group { margin-bottom: 11px; }
+        .tumor-calc .slider-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            color: var(--gray-700);
+            margin-bottom: 5px;
+            font-weight: 600;
+        }
+        .tumor-calc input[type="range"] {
+            width: 100%;
+            accent-color: var(--primary);
+            cursor: pointer;
+        }
+        .tumor-calc .slider-ticks {
+            display: flex;
+            justify-content: space-between;
+            font-size: 10px;
+            color: var(--gray-500);
+            margin-top: 2px;
+        }
+
+        .tumor-calc .result-hero {
+            background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 50%, #3730a3 100%);
+            color: white;
+            border-radius: var(--radius);
+            padding: 18px 20px;
+            text-align: center;
+        }
+        .tumor-calc .hero-label { font-size: 11px; opacity: 0.8; margin-bottom: 6px; }
+        .tumor-calc .hero-coeff { font-size: 56px; font-weight: 900; line-height: 1; letter-spacing: -2px; }
+        .tumor-calc .hero-sub {
+            background: rgba(255,255,255,0.18);
+            border-radius: 12px;
+            padding: 3px 14px;
+            font-size: 12px;
+            display: inline-block;
+            margin-top: 8px;
+        }
+
+        .tumor-calc .radar-card {
+            background: white;
+            border-radius: var(--radius);
+            padding: 14px;
+            border: 1px solid var(--gray-200);
+            box-shadow: var(--shadow-sm);
+        }
+        .tumor-calc .radar-title {
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--gray-700);
+            margin-bottom: 10px;
+            text-align: center;
+        }
+
+        .tumor-calc .price-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 7px; }
+        .tumor-calc .price-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin-top: 7px; }
+
+        .tumor-calc .pbox {
+            background: white;
+            border-radius: 7px;
+            padding: 11px;
+            text-align: center;
+            border: 2px solid var(--gray-200);
+            box-shadow: var(--shadow-sm);
+        }
+        .tumor-calc .pbox.cons { border-color: #fbbf24; }
+        .tumor-calc .pbox.base { border-color: var(--primary); background: #eff6ff; }
+        .tumor-calc .pbox.opti { border-color: var(--success); }
+        .tumor-calc .pbox.nrdl { border-color: var(--danger); background: var(--danger-light); }
+        .tumor-calc .pbox.exp { border-color: var(--violet); background: var(--violet-light); }
+
+        .tumor-calc .pbox-lbl { font-size: 10px; color: var(--gray-500); font-weight: 700; margin-bottom: 3px; }
+        .tumor-calc .pbox-val { font-size: 17px; font-weight: 800; color: var(--gray-900); }
+        .tumor-calc .pbox.base .pbox-val { color: var(--primary); font-size: 21px; }
+        .tumor-calc .pbox.nrdl .pbox-val { color: var(--danger); }
+        .tumor-calc .pbox.exp .pbox-val { color: var(--violet); }
+
+        .tumor-calc .breakdown-card {
+            background: white;
+            border-radius: var(--radius);
+            border: 1px solid var(--gray-200);
+            box-shadow: var(--shadow-sm);
+            overflow: hidden;
+        }
+        .tumor-calc .bk-hd {
+            padding: 10px 14px;
+            background: var(--gray-50);
+            font-weight: 700;
+            font-size: 12px;
+            border-bottom: 1px solid var(--gray-200);
+        }
+        .tumor-calc .bk-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 14px;
+            border-bottom: 1px solid var(--gray-100);
+        }
+        .tumor-calc .bk-row:last-child { border-bottom: none; background: #f0f9ff; font-weight: 700; }
+        .tumor-calc .bk-name { font-size: 11.5px; color: var(--gray-700); }
+        .tumor-calc .bk-val {
+            font-size: 11.5px;
+            font-weight: 700;
+            background: var(--primary-light);
+            color: var(--primary);
+            padding: 2px 8px;
+            border-radius: 10px;
+        }
+        .tumor-calc .bk-val.zero { background: var(--gray-100); color: var(--gray-500); }
+        .tumor-calc .bk-val.total { background: var(--primary); color: white; font-size: 13px; }
+
+        .tumor-calc .sens-section {
+            background: white;
+            border-radius: var(--radius);
+            border: 1px solid var(--gray-200);
+            padding: 13px;
+            box-shadow: var(--shadow-sm);
+        }
+        .tumor-calc .sens-title { font-size: 12px; font-weight: 700; color: var(--gray-700); margin-bottom: 9px; }
+        .tumor-calc .sens-row {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            margin-bottom: 5px;
+        }
+        .tumor-calc .sens-lbl { font-size: 11px; color: var(--gray-700); width: 95px; flex-shrink: 0; }
+        .tumor-calc .sens-bar-wrap { flex: 1; height: 5px; background: var(--gray-200); border-radius: 3px; overflow: hidden; }
+        .tumor-calc .sens-fill {
+            height: 100%;
+            border-radius: 3px;
+            background: linear-gradient(90deg, #3b82f6, #7c3aed);
+            transition: width 0.4s;
+        }
+        .tumor-calc .sens-val { font-size: 10.5px; font-weight: 700; color: var(--primary); width: 32px; text-align: right; }
+
+        .tumor-calc .note { background: var(--warning-light); border-left: 3px solid var(--warning); padding: 9px 12px; border-radius: 0 7px 7px 0; font-size: 11.5px; color: var(--gray-700); line-height: 1.5; }
+        .tumor-calc .formula { background: var(--gray-50); border: 1px solid var(--gray-200); border-radius: 7px; padding: 11px; font-size: 10.5px; color: var(--gray-500); font-family: 'Courier New', monospace; line-height: 1.7; }
+        .tumor-calc .formula strong { color: var(--gray-700); font-family: inherit; }
+
+        .tumor-calc .btn-calc {
+            width: 100%;
+            padding: 13px;
+            background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 800;
+            cursor: pointer;
+            margin-top: 6px;
+            transition: transform 0.2s, box-shadow 0.2s;
+            letter-spacing: 0.3px;
+            font-family: inherit;
+        }
+        .tumor-calc .btn-calc:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(59,130,246,0.35); }
+        .tumor-calc .btn-reset {
+            width: 100%;
+            padding: 9px;
+            background: white;
+            color: var(--gray-700);
+            border: 1.5px solid var(--gray-300);
+            border-radius: 8px;
+            font-size: 12.5px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 7px;
+            transition: all 0.15s;
+            font-family: inherit;
+        }
+        .tumor-calc .btn-reset:hover { border-color: var(--danger); color: var(--danger); }
+
+        .tumor-calc .saki-note {
+            background: var(--violet-light);
+            border-radius: 7px;
+            padding: 8px 11px;
+            font-size: 11px;
+            color: #5b21b6;
+            margin-bottom: 11px;
+        }
+        .tumor-calc .market-note {
+            background: var(--warning-light);
+            border-radius: 7px;
+            padding: 8px 11px;
+            font-size: 11px;
+            color: #92400e;
+            margin-top: 10px;
+        }
+
+        .tumor-calc .price-section-hd {
+            font-size: 11.5px;
+            font-weight: 800;
+            color: var(--gray-700);
+            margin-bottom: 7px;
+        }
+        .tumor-calc .nrdl-hd {
+            font-size: 11px;
+            font-weight: 800;
+            color: var(--danger);
+            margin-bottom: 5px;
+            margin-top: 2px;
+        }
+
+        /* ===== ADC计算器样式（隔离命名空间） ===== */
+        .adc-calc {
+            --primary: #1d4ed8;
+            --primary-light: #dbeafe;
+            --green: #059669;
+            --green-light: #d1fae5;
+            --orange: #d97706;
+            --orange-light: #fef3c7;
+            --red: #dc2626;
+            --red-light: #fee2e2;
+            --bg: #f1f5f9;
+            --card: #ffffff;
+            --border: #e2e8f0;
+            --text: #1e293b;
+            --sub: #64748b;
+            --radius: 10px;
+        }
+
+        .adc-calc .main-grid { display: grid; grid-template-columns: 340px 1fr; gap: 16px; padding: 16px; max-width: 1400px; margin: 0 auto; }
+
+        .adc-calc .panel { background: var(--card); border-radius: var(--radius); border: 1px solid var(--border); overflow: hidden; }
+        .adc-calc .panel-header { padding: 11px 16px; color: #fff; font-weight: 600; font-size: 13px; display: flex; align-items: center; gap: 8px; }
+        .adc-calc .panel-header.primary { background: var(--primary); }
+        .adc-calc .panel-header.green { background: var(--green); }
+        .adc-calc .panel-header.orange { background: var(--orange); }
+        .adc-calc .panel-header.slate { background: #475569; }
+        .adc-calc .panel-body { padding: 14px 16px; }
+
+        .adc-calc .params-col { display: flex; flex-direction: column; gap: 12px; max-height: calc(100vh - 100px); overflow-y: auto; }
+        .adc-calc .results-col { display: flex; flex-direction: column; gap: 12px; }
+
+        .adc-calc .section-label { font-size: 11px; font-weight: 700; color: var(--sub); text-transform: uppercase; letter-spacing: .6px; margin-bottom: 6px; }
+        .adc-calc .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .adc-calc .field { display: flex; flex-direction: column; gap: 3px; }
+        .adc-calc .field label { font-size: 12px; color: var(--sub); }
+        .adc-calc .field input, .adc-calc .field select {
+            padding: 6px 9px; border: 1px solid var(--border); border-radius: 6px;
+            font-size: 13px; background: #f8fafc; color: var(--text);
+            transition: border-color .15s, background .15s;
+        }
+        .adc-calc .field input:focus, .adc-calc .field select:focus { outline: none; border-color: var(--primary); background: #fff; }
+        .adc-calc .field .unit { font-size: 11px; color: var(--sub); }
+
+        .adc-calc .preset-row { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+        .adc-calc .preset-btn {
+            padding: 5px 10px; border: 1px solid var(--border); border-radius: 20px;
+            font-size: 11px; cursor: pointer; background: #f8fafc; color: var(--sub);
+            transition: all .15s;
+        }
+        .adc-calc .preset-btn:hover, .adc-calc .preset-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+        .adc-calc .hint { font-size: 11px; color: var(--sub); background: #f8fafc; border: 1px solid var(--border); border-radius: 6px; padding: 7px 10px; line-height: 1.5; }
+
+        .adc-calc .price-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+        .adc-calc .price-card { border-radius: 8px; padding: 14px 12px; text-align: center; }
+        .adc-calc .price-card.primary { background: var(--primary-light); border: 1.5px solid var(--primary); }
+        .adc-calc .price-card.green  { background: var(--green-light);   border: 1.5px solid var(--green); }
+        .adc-calc .price-card.orange { background: var(--orange-light);  border: 1.5px solid var(--orange); }
+        .adc-calc .price-card .label { font-size: 11px; color: var(--sub); margin-bottom: 4px; }
+        .adc-calc .price-card .value { font-size: 22px; font-weight: 800; }
+        .adc-calc .price-card.primary .value { color: var(--primary); }
+        .adc-calc .price-card.green   .value { color: var(--green); }
+        .adc-calc .price-card.orange  .value { color: var(--orange); }
+        .adc-calc .price-card .sub { font-size: 11px; color: var(--sub); margin-top: 2px; }
+
+        .adc-calc .metrics-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .adc-calc .metrics-table th { background: #f1f5f9; padding: 8px 10px; text-align: left; font-size: 11px; color: var(--sub); font-weight: 600; }
+        .adc-calc .metrics-table td { padding: 8px 10px; border-bottom: 1px solid var(--border); }
+        .adc-calc .metrics-table tr:last-child td { border-bottom: none; }
+        .adc-calc .tag { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
+        .adc-calc .tag.green { background: var(--green-light); color: var(--green); }
+        .adc-calc .tag.red   { background: var(--red-light);   color: var(--red); }
+        .adc-calc .tag.blue  { background: var(--primary-light); color: var(--primary); }
+        .adc-calc .tag.orange{ background: var(--orange-light); color: var(--orange); }
+
+        .adc-calc .icer-bar-wrap { margin-top: 6px; }
+        .adc-calc .icer-bar-track { height: 10px; background: var(--border); border-radius: 5px; overflow: hidden; position: relative; }
+        .adc-calc .icer-bar-fill  { height: 100%; border-radius: 5px; transition: width .4s; }
+        .adc-calc .icer-bar-labels { display: flex; justify-content: space-between; font-size: 11px; color: var(--sub); margin-top: 3px; }
+
+        .adc-calc .charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .adc-calc .chart-wrap { height: 230px; position: relative; }
+
+        .adc-calc .sens-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+        .adc-calc .sens-table th { padding: 6px 8px; background: #f1f5f9; font-size: 11px; color: var(--sub); text-align: left; }
+        .adc-calc .sens-table td { padding: 6px 8px; border-bottom: 1px solid #f1f5f9; }
+        .adc-calc .sens-bar-inline { height: 6px; border-radius: 3px; background: var(--primary-light); display: inline-block; vertical-align: middle; }
+
+        .adc-calc .disclaimer { font-size: 11px; color: var(--sub); background: #f8fafc; border: 1px solid var(--border); border-radius: 6px; padding: 8px 12px; line-height: 1.6; }
+
+        /* 响应式 */
+        @media (max-width: 1050px) {
+            .tumor-calc .main-content { grid-template-columns: 1fr; }
+            .tumor-calc .input-section { border-right: none; border-bottom: 1px solid var(--gray-200); max-height: none; }
+            .tumor-calc .result-section { max-height: none; }
+            .adc-calc .main-grid { grid-template-columns: 1fr; }
+            .adc-calc .params-col { max-height: none; }
+            .adc-calc .charts-row { grid-template-columns: 1fr; }
+        }
+        @media (max-width: 640px) {
+            .calculator-grid { grid-template-columns: 1fr; }
+            .brand-logo { font-size: 36px; }
+            .welcome-text { font-size: 22px; }
+            .tumor-calc .cb-grid { grid-template-columns: 1fr; }
+            .tumor-calc .price-grid-3 { grid-template-columns: 1fr 1fr; }
+            .tumor-calc .info-grid { grid-template-columns: 1fr; }
+            .adc-calc .price-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ===== 首页导航 ===== -->
+    <div id="landingPage" class="landing-page">
+        <div class="brand-header">
+            <div class="brand-logo">潮药bar</div>
+            <h1 class="welcome-text">欢迎来到潮药bar</h1>
+            <p class="subtitle">创新药定价决策支持系统 · 整合系统动力学模型与药物经济学Markov模型，为肿瘤及ADC药物研发与商业化提供科学定价参考</p>
+        </div>
+
+        <div class="calculator-grid">
+            <div class="calc-card" onclick="showCalculator('tumor')">
+                <div class="calc-icon">🎯</div>
+                <h2 class="calc-title">肿瘤创新药价值定价计算器</h2>
+                <p class="calc-desc">基于日本NHI系统动力学模型（Xing et al., 2025），整合价值溢价、SAKIGAKE突破性疗法溢价、市场性溢价五维评估体系，适用于实体瘤、血液瘤等创新药定价决策</p>
+                <div class="calc-tags">
+                    <span class="tag primary">SD Model</span>
+                    <span class="tag">30+对照药</span>
+                    <span class="tag success">NRDL调整</span>
+                    <span class="tag">雷达图</span>
+                </div>
+            </div>
+
+            <div class="calc-card" onclick="showCalculator('adc')">
+                <div class="calc-icon">🧬</div>
+                <h2 class="calc-title">ADC药物经济学定价计算器</h2>
+                <p class="calc-desc">基于三状态Markov模型（PFS→PPS→Dead），采用QALY/ICER框架，支持DESTINY-Breast03/04等临床试验预设，实现基于支付意愿阈值（WTP）的最大可接受价格反推</p>
+                <div class="calc-tags">
+                    <span class="tag primary">Markov模型</span>
+                    <span class="tag">ICER反推</span>
+                    <span class="tag success">半周期校正</span>
+                    <span class="tag">成本效益平面</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== 肿瘤计算器 ===== -->
+    <div id="tumorCalculator" class="calculator-container tumor-calc">
+        <div class="nav-header">
+            <div class="nav-header-left">
+                <button class="back-btn" onclick="showLanding()">← 返回首页</button>
+                <div class="nav-brand">潮药bar <span>| 肿瘤创新药价值定价计算器</span></div>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+                <span style="background: rgba(255,255,255,0.15); border-radius: 20px; padding: 4px 10px; font-size: 11px;">SD Model</span>
+                <span style="background: rgba(255,255,255,0.15); border-radius: 20px; padding: 4px 10px; font-size: 11px;">系统动力学</span>
+            </div>
+        </div>
+
+        <div class="container" style="border-radius:0; box-shadow:none;">
+            <div class="main-content">
+                <!-- LEFT: INPUT -->
+                <div class="input-section">
+                    <div class="card">
+                        <div class="card-hd" onclick="toggleCard('drugInfo')">
+                            <div class="card-hd-left">🏥 药物基本信息</div>
+                            <span style="color:#9ca3af;font-size:11px;" id="arrow_drugInfo">▾</span>
+                        </div>
+                        <div class="card-body" id="drugInfo">
+                            <div class="info-grid">
+                                <div class="info-item">
+                                    <label>肿瘤类型</label>
+                                    <select id="tumorType" onchange="tumorCalculate()">
+                                        <option value="solid">实体瘤（通用）</option>
+                                        <option value="lung">肺癌 (NSCLC/SCLC)</option>
+                                        <option value="breast">乳腺癌</option>
+                                        <option value="gi">消化道肿瘤</option>
+                                        <option value="heme">血液肿瘤</option>
+                                        <option value="gyn">妇科肿瘤</option>
+                                        <option value="rare_cancer">罕见肿瘤</option>
+                                        <option value="multi">泛瘤种</option>
+                                    </select>
+                                </div>
+                                <div class="info-item">
+                                    <label>治疗线数</label>
+                                    <select id="therapyLine" onchange="tumorCalculate()">
+                                        <option value="1L">一线治疗 (1L)</option>
+                                        <option value="2L">二线治疗 (2L)</option>
+                                        <option value="3L">三线及以上 (3L+)</option>
+                                        <option value="maint">维持治疗</option>
+                                        <option value="adj">辅助/新辅助</option>
+                                    </select>
+                                </div>
+                                <div class="info-item">
+                                    <label>靶向精准性</label>
+                                    <select id="biomarker" onchange="tumorCalculate()">
+                                        <option value="yes">生物标志物精准靶向</option>
+                                        <option value="partial">部分生物标志物选择</option>
+                                        <option value="no">广谱（无需检测）</option>
+                                    </select>
+                                </div>
+                                <div class="info-item">
+                                    <label>药物类型</label>
+                                    <select id="drugType" onchange="tumorCalculate()">
+                                        <option value="smi">小分子抑制剂 (SMI)</option>
+                                        <option value="mab">单克隆抗体 (mAb)</option>
+                                        <option value="adc">ADC药物</option>
+                                        <option value="bsab">双特异性抗体 (BsAb)</option>
+                                        <option value="cart">CAR-T细胞疗法</option>
+                                        <option value="immuno">免疫检查点抑制剂</option>
+                                        <option value="other">其他生物制品</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="comparator-card">
+                        <label>📊 选择可比药物基准（Comparator Drug）</label>
+                        <select id="comparatorSelect" onchange="updateComparator()">
+                            <optgroup label="── 🔬 ADC类（抗体药物偶联物）──">
+                                <option value="60" data-ctx="HER2+乳腺癌/胃癌/肺癌" data-class="ADC">DS-8201（德曲妥珠单抗/Enhertu）· 60万/年</option>
+                                <option value="36.5" data-ctx="HER2+乳腺癌" data-class="ADC" selected>T-DM1（恩美曲妥珠单抗）· 36.5万/年</option>
+                                <option value="45" data-ctx="TNBC/尿路上皮癌" data-class="ADC">戈沙妥珠单抗（Trodelvy）· 45万/年</option>
+                                <option value="20" data-ctx="HER2+胃癌/乳腺癌" data-class="ADC">维迪西妥单抗（RC48）· 20万/年 国产</option>
+                                <option value="50" data-ctx="复发/难治B-ALL" data-class="ADC">奥加伊妥珠单抗（Besylomab）· 50万/年</option>
+                                <option value="48" data-ctx="复发/难治DLBCL" data-class="ADC">维泊妥珠单抗（Polivy）· 48万/年</option>
+                                <option value="35" data-ctx="HER2低表达乳腺癌" data-class="ADC">芦康沙妥珠单抗（SKB264）· 35万/年 国产</option>
+                            </optgroup>
+                            <optgroup label="── 🎯 EGFR抑制剂 ──">
+                                <option value="30" data-ctx="EGFR T790M突变NSCLC" data-class="EGFR TKI">奥希替尼（泰瑞沙）· 30万/年（医保前参考）</option>
+                                <option value="8" data-ctx="EGFR突变NSCLC（医保后）" data-class="EGFR TKI">奥希替尼（泰瑞沙）· 8万/年（医保后）</option>
+                                <option value="12" data-ctx="EGFR突变NSCLC 三代" data-class="EGFR TKI">阿美替尼（阿斯利康/豪森）· 12万/年</option>
+                                <option value="10" data-ctx="EGFR突变NSCLC 三代" data-class="EGFR TKI">伏美替尼（艾力斯）· 10万/年 国产</option>
+                                <option value="5" data-ctx="EGFR突变NSCLC 一代" data-class="EGFR TKI">埃克替尼（凯美纳）· 5万/年 国产</option>
+                                <option value="22" data-ctx="EGFR外显子20插入突变" data-class="EGFR TKI">莫博赛替尼（Mobocertinib）· 22万/年</option>
+                            </optgroup>
+                            <optgroup label="── 🛡️ PD-1/PD-L1免疫检查点抑制剂 ──">
+                                <option value="18" data-ctx="多适应症（进口PD-1）" data-class="PD-1/L1">帕博利珠单抗（Keytruda/K药）· 18万/年</option>
+                                <option value="16" data-ctx="多适应症（进口PD-1）" data-class="PD-1/L1">纳武利尤单抗（Opdivo/O药）· 16万/年</option>
+                                <option value="40" data-ctx="NSCLC/肝癌（进口PD-L1）" data-class="PD-1/L1">阿替利珠单抗（Tecentriq/T药）· 40万/年</option>
+                                <option value="10" data-ctx="多适应症（国产PD-1）" data-class="PD-1/L1">信迪利单抗（达伯舒）· 10万/年</option>
+                                <option value="9" data-ctx="多适应症（国产PD-1）" data-class="PD-1/L1">替雷利珠单抗（百泽安）· 9万/年</option>
+                                <option value="8" data-ctx="多适应症（国产PD-1）" data-class="PD-1/L1">卡瑞利珠单抗（艾瑞卡）· 8万/年</option>
+                                <option value="9" data-ctx="多适应症（国产PD-1）" data-class="PD-1/L1">特瑞普利单抗（拓益）· 9万/年</option>
+                                <option value="8" data-ctx="NSCLC/食管癌（国产PD-L1）" data-class="PD-1/L1">舒格利单抗（思路迪）· 8万/年</option>
+                            </optgroup>
+                            <optgroup label="── 💊 CDK4/6抑制剂 ──">
+                                <option value="22" data-ctx="HR+/HER2-乳腺癌" data-class="CDK4/6">哌柏西利（爱博新/Ibrance）· 22万/年</option>
+                                <option value="20" data-ctx="HR+乳腺癌" data-class="CDK4/6">瑞博西利（Kisqali）· 20万/年</option>
+                                <option value="18" data-ctx="HR+乳腺癌（辅助）" data-class="CDK4/6">阿贝西利（Verzenio）· 18万/年</option>
+                                <option value="12" data-ctx="HR+乳腺癌 国产" data-class="CDK4/6">达尔西利（优赛）· 12万/年</option>
+                            </optgroup>
+                            <optgroup label="── 🔷 BTK抑制剂 ──">
+                                <option value="25" data-ctx="CLL/MCL/WM" data-class="BTK">伊布替尼（亿珂）· 25万/年</option>
+                                <option value="15" data-ctx="CLL/MCL/WM" data-class="BTK">泽布替尼（百悦泽）· 15万/年 国产</option>
+                                <option value="12" data-ctx="CLL/MCL 国产" data-class="BTK">奥布替尼（宜诺凯）· 12万/年 国产</option>
+                                <option value="16" data-ctx="CLL/MCL" data-class="BTK">阿可替尼（Calquence）· 16万/年</option>
+                            </optgroup>
+                            <optgroup label="── 🔵 PARP抑制剂 ──">
+                                <option value="20" data-ctx="BRCA突变卵巢癌/乳腺癌" data-class="PARP">奥拉帕利（利普卓）· 20万/年</option>
+                                <option value="18" data-ctx="卵巢癌维持治疗" data-class="PARP">尼拉帕利（则乐）· 18万/年</option>
+                                <option value="10" data-ctx="卵巢癌/乳腺癌 国产" data-class="PARP">氟唑帕利（艾坦）· 10万/年 国产</option>
+                                <option value="11" data-ctx="卵巢癌/乳腺癌 国产" data-class="PARP">帕米帕利（百汇泽）· 11万/年 国产</option>
+                                <option value="9" data-ctx="卵巢癌/前列腺癌 国产" data-class="PARP">塞利帕尼（赛维）· 9万/年 国产</option>
+                            </optgroup>
+                            <optgroup label="── 🌿 VEGF/VEGFR/多靶点 ──">
+                                <option value="8" data-ctx="多肿瘤（医保后）" data-class="VEGF/VEGFR">贝伐珠单抗（安维汀/国产仿制）· 8万/年</option>
+                                <option value="20" data-ctx="HCC/甲状腺癌/肾癌" data-class="多靶点">仑伐替尼（乐卫玛）· 20万/年</option>
+                                <option value="5" data-ctx="晚期胃癌" data-class="多靶点">阿帕替尼（艾坦）· 5万/年 国产</option>
+                                <option value="8" data-ctx="NSCLC/软组织肉瘤等" data-class="多靶点">安罗替尼（福可维）· 8万/年 国产</option>
+                                <option value="15" data-ctx="HCC" data-class="多靶点">索拉非尼（多吉美）· 15万/年</option>
+                                <option value="25" data-ctx="RCC/HCC" data-class="多靶点">卡博替尼（Cabometyx）· 25万/年</option>
+                            </optgroup>
+                            <optgroup label="── 🧬 ALK/ROS1/MET抑制剂 ──">
+                                <option value="20" data-ctx="ALK+NSCLC 二代" data-class="ALK">阿来替尼（安圣莎）· 20万/年</option>
+                                <option value="25" data-ctx="ALK+NSCLC 三代" data-class="ALK">洛拉替尼（Lorbrena）· 25万/年</option>
+                                <option value="12" data-ctx="ALK+NSCLC 国产" data-class="ALK">恩沙替尼（贝美纳）· 12万/年 国产</option>
+                                <option value="18" data-ctx="MET外显子14跳变NSCLC" data-class="MET">卡马替尼（Tabrecta）· 18万/年</option>
+                                <option value="15" data-ctx="MET外显子14跳变NSCLC" data-class="MET">谷美替尼（安健宁）· 15万/年 国产</option>
+                            </optgroup>
+                            <optgroup label="── ⚡ KRAS抑制剂（新机制）──">
+                                <option value="28" data-ctx="KRAS G12C突变NSCLC/结直肠癌" data-class="KRAS">索托拉西布（Lumakras）· 28万/年</option>
+                                <option value="30" data-ctx="KRAS G12C突变NSCLC/结直肠癌" data-class="KRAS">阿达格拉西布（Krazati）· 30万/年</option>
+                            </optgroup>
+                            <optgroup label="── 🏆 HER2靶向治疗 ──">
+                                <option value="5" data-ctx="HER2+乳腺癌/胃癌（医保后）" data-class="HER2单抗">曲妥珠单抗（赫赛汀/国产）· 5万/年</option>
+                                <option value="18" data-ctx="HER2+乳腺癌/胃癌" data-class="HER2单抗">帕妥珠单抗（帕捷特）· 18万/年</option>
+                                <option value="15" data-ctx="HER2+乳腺癌" data-class="HER2 TKI">吡咯替尼（艾瑞妮）· 15万/年 国产</option>
+                                <option value="12" data-ctx="HER2+乳腺癌" data-class="HER2 TKI">奈拉替尼（Nerlynx）· 12万/年</option>
+                                <option value="20" data-ctx="HER2+乳腺癌" data-class="HER2 TKI">图卡替尼（Tukysa）· 20万/年</option>
+                            </optgroup>
+                            <optgroup label="── 🌟 CAR-T/细胞疗法 ──">
+                                <option value="120" data-ctx="复发/难治多发性骨髓瘤（BCMA）" data-class="CAR-T">西达基奥仑赛（Carvykti）· 120万/疗程</option>
+                                <option value="120" data-ctx="复发/难治LBCL（CD19）" data-class="CAR-T">阿基仑赛（奕凯达）· 120万/疗程</option>
+                                <option value="100" data-ctx="复发/难治LBCL（CD19）" data-class="CAR-T">瑞基仑赛（倍诺达）· 100万/疗程 国产</option>
+                                <option value="80" data-ctx="复发/难治MM（BCMA）" data-class="CAR-T">伊基奥仑赛（FasT CAR-T）· 80万/疗程 国产</option>
+                            </optgroup>
+                            <optgroup label="── 💜 BCMA/CD38/多发性骨髓瘤 ──">
+                                <option value="30" data-ctx="复发/难治多发性骨髓瘤" data-class="CD38单抗">达雷妥尤单抗（Darzalex）· 30万/年</option>
+                                <option value="20" data-ctx="复发/难治多发性骨髓瘤" data-class="CD38单抗">伊沙妥昔单抗（Sarclisa）· 20万/年</option>
+                                <option value="35" data-ctx="MM（BCMA双特异性抗体）" data-class="BsAb">特立妥单抗（Tecvayli）· 35万/年</option>
+                            </optgroup>
+                            <optgroup label="── 🔶 BRAF/MEK/RET抑制剂 ──">
+                                <option value="20" data-ctx="BRAF V600E突变黑色素瘤" data-class="BRAF">维莫非尼（Zelboraf）· 20万/年</option>
+                                <option value="35" data-ctx="BRAF V600突变联合靶向" data-class="BRAF+MEK">达拉非尼+曲美替尼（联合方案）· 35万/年</option>
+                                <option value="22" data-ctx="RET融合/突变肺癌/甲状腺癌" data-class="RET">普雷西替尼（Gavreto）· 22万/年</option>
+                                <option value="18" data-ctx="NTRK融合肿瘤" data-class="NTRK">拉罗替尼（Vitrakvi）· 18万/年</option>
+                            </optgroup>
+                            <optgroup label="── ⭕ 血液肿瘤靶向（其他）──">
+                                <option value="22" data-ctx="FLT3突变AML" data-class="FLT3">吉瑞替尼（Xospata）· 22万/年</option>
+                                <option value="18" data-ctx="IDH2突变AML" data-class="IDH">恩西地平（Idhifa）· 18万/年</option>
+                                <option value="15" data-ctx="CLL/AML（BCL-2抑制剂）" data-class="BCL-2">维奈托克（唯可来）· 15万/年</option>
+                                <option value="25" data-ctx="Ph+CML（三代BCR-ABL）" data-class="BCR-ABL">普纳替尼（Iclusig）· 25万/年</option>
+                                <option value="28" data-ctx="复发/难治CLL（PI3K）" data-class="PI3K">艾代拉里斯（Zydelig）· 28万/年</option>
+                            </optgroup>
+                            <optgroup label="── 🔧 自定义 ──">
+                                <option value="custom" data-ctx="自定义适应症" data-class="自定义">自定义基准价格...</option>
+                            </optgroup>
+                        </select>
+
+                        <div id="customPriceInput" style="display:none; margin-top:9px;">
+                            <input type="number" id="customPrice" placeholder="输入年治疗费用（万元）">
+                        </div>
+
+                        <div class="comp-meta">
+                            <span>📌 基准价: <strong id="basePriceDisplay">36.5</strong> 万元/年</span>
+                            <span>🏷️ 分类: <strong id="classDisplay">ADC</strong></span>
+                            <span>🏥 适应症: <strong id="ctxDisplay">HER2+乳腺癌</strong></span>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-hd" onclick="toggleCard('valueSection')">
+                            <div class="card-hd-left">💎 <span style="color:#1e40af;">价值溢价 (Value Premium)</span></div>
+                            <div style="display:flex;align-items:center;gap:7px;">
+                                <span class="score-badge score-blue" id="valueScore">0分</span>
+                                <span style="color:#9ca3af;font-size:11px;" id="arrow_valueSection">▾</span>
+                            </div>
+                        </div>
+                        <div class="card-body" id="valueSection">
+                            <div class="sd-banner" id="sdBanner">
+                                <span style="font-size:16px;">🔗</span>
+                                <span><strong>SD模型联动已激活</strong>：新机制认证（SAKIGAKE）按论文Table 2规则自动加权 新作用部位(+2) 和 新靶点(+1)，形成正向反馈环</span>
+                            </div>
+
+                            <div class="sub-title">① 新的临床有用机制（New Clinically Useful Mechanism）</div>
+                            <div class="cb-grid">
+                                <div class="cb-item hot" id="item_newActionPart">
+                                    <input type="checkbox" id="newActionPart" onchange="tumorCalculate()">
+                                    <label for="newActionPart">新作用部位 (New Action Part)
+                                        <span class="tag tag-w">+2分</span>
+                                        <span class="tag tag-hot">🔥最高敏感</span>
+                                    </label>
+                                </div>
+                                <div class="cb-item" id="item_newTarget">
+                                    <input type="checkbox" id="newTarget" onchange="tumorCalculate()">
+                                    <label for="newTarget">新靶点/新机制 (New Target)
+                                        <span class="tag tag-w">+1分</span>
+                                    </label>
+                                </div>
+                                <div class="cb-item hot" id="item_noStandard">
+                                    <input type="checkbox" id="noStandard" onchange="tumorCalculate()">
+                                    <label for="noStandard">无标准治疗的严重疾病
+                                        <span class="tag tag-w">+1分</span>
+                                        <span class="tag tag-hot">🔥高敏感</span>
+                                    </label>
+                                </div>
+                                <div class="cb-item hot" id="item_nhsAccreditation1">
+                                    <input type="checkbox" id="nhsAccreditation1" onchange="tumorCalculate()">
+                                    <label for="nhsAccreditation1">国家/权威认证（突破性疗法等）
+                                        <span class="tag tag-w">+1分</span>
+                                        <span class="tag tag-hot">🔥高敏感</span>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div class="sub-title">② 相比对照药更有效/安全（Efficacy & Safety vs. Comparator）</div>
+                            <div class="cb-grid">
+                                <div class="cb-item hot" id="item_betterEfficacy">
+                                    <input type="checkbox" id="betterEfficacy" onchange="tumorCalculate()">
+                                    <label for="betterEfficacy">疗效显著优于对照药（OS/PFS↑）
+                                        <span class="tag tag-w">+2分</span>
+                                        <span class="tag tag-hot">🔥高敏感</span>
+                                    </label>
+                                </div>
+                                <div class="cb-item" id="item_betterSafety">
+                                    <input type="checkbox" id="betterSafety" onchange="tumorCalculate()">
+                                    <label for="betterSafety">安全性/耐受性优于对照药
+                                        <span class="tag tag-w">+1分</span>
+                                    </label>
+                                </div>
+                                <div class="cb-item" id="item_rctEvidence">
+                                    <input type="checkbox" id="rctEvidence" onchange="tumorCalculate()">
+                                    <label for="rctEvidence">RCT随机对照试验高质量证据
+                                        <span class="tag tag-w">+2分</span>
+                                    </label>
+                                </div>
+                                <div class="cb-item" id="item_otherEvidence">
+                                    <input type="checkbox" id="otherEvidence" onchange="tumorCalculate()">
+                                    <label for="otherEvidence">真实世界证据（RWE）支持
+                                        <span class="tag tag-w">+1分</span>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div class="sub-title">③ 改善疾病治疗方法（Improvement of Disease Treatment）</div>
+                            <div class="cb-grid">
+                                <div class="cb-item" id="item_poorOutcome">
+                                    <input type="checkbox" id="poorOutcome" onchange="tumorCalculate()">
+                                    <label for="poorOutcome">惠及预后不良患者群体
+                                        <span class="tag tag-w">+1分</span>
+                                    </label>
+                                </div>
+                                <div class="cb-item" id="item_standardOption">
+                                    <input type="checkbox" id="standardOption" onchange="tumorCalculate()">
+                                    <label for="standardOption">成为标准治疗（SoC）选择
+                                        <span class="tag tag-w">+1分</span>
+                                    </label>
+                                </div>
+                                <div class="cb-item hot" id="item_fastOnset">
+                                    <input type="checkbox" id="fastOnset" onchange="tumorCalculate()">
+                                    <label for="fastOnset">更快起效/更持久效果
+                                        <span class="tag tag-w">+1分</span>
+                                        <span class="tag tag-hot">🔥高敏感</span>
+                                    </label>
+                                </div>
+                                <div class="cb-item hot" id="item_combination">
+                                    <input type="checkbox" id="combination" onchange="tumorCalculate()">
+                                    <label for="combination">联合用药增强疗效（Combo）
+                                        <span class="tag tag-w">+1分</span>
+                                        <span class="tag tag-hot">🔥最高敏感</span>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div class="sub-title">④ 制剂改进提升有用性（Formulation Improvements）</div>
+                            <div class="cb-grid">
+                                <div class="cb-item" id="item_lessInvasive">
+                                    <input type="checkbox" id="lessInvasive" onchange="tumorCalculate()">
+                                    <label for="lessInvasive">降低给药侵入性（口服 vs. 注射）
+                                        <span class="tag tag-w">+1分</span>
+                                    </label>
+                                </div>
+                                <div class="cb-item" id="item_easyAdmin">
+                                    <input type="checkbox" id="easyAdmin" onchange="tumorCalculate()">
+                                    <label for="easyAdmin">便利给药（长效/皮下注射等）
+                                        <span class="tag tag-w">+1分</span>
+                                    </label>
+                                </div>
+                                <div class="cb-item" id="item_stableLevel">
+                                    <input type="checkbox" id="stableLevel" onchange="tumorCalculate()">
+                                    <label for="stableLevel">血药浓度稳定（PK优化）
+                                        <span class="tag tag-w">+1分</span>
+                                    </label>
+                                </div>
+                                <div class="cb-item" id="item_nhsAccreditation2">
+                                    <input type="checkbox" id="nhsAccreditation2" onchange="tumorCalculate()">
+                                    <label for="nhsAccreditation2">制剂/工艺创新认证
+                                        <span class="tag tag-w">+1分</span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-hd" onclick="toggleCard('sakigakeSection')">
+                            <div class="card-hd-left" style="color:var(--violet);">🚀 SAKIGAKE溢价（突破性疗法认定）</div>
+                            <div style="display:flex;align-items:center;gap:7px;">
+                                <span class="score-badge score-violet" id="sakigakeScore">0分</span>
+                                <span style="color:#9ca3af;font-size:11px;" id="arrow_sakigakeSection">▸</span>
+                            </div>
+                        </div>
+                        <div class="card-body" id="sakigakeSection" style="display:none;">
+                            <div class="saki-note">
+                                💡 SAKIGAKE = 中国<strong>突破性疗法认定</strong>（BTD），认定后可触发对价值维度的SD联动反馈（论文Fig.2因果环）。溢价区间：≥6分→<strong>20%</strong>，4-5分→<strong>15%</strong>，2-3分→<strong>10%</strong>
+                            </div>
+                            <div class="cb-grid">
+                                <div class="cb-item hot sd-link" id="item_sakiMechanism">
+                                    <input type="checkbox" id="sakiMechanism" onchange="handleSakigake()">
+                                    <label for="sakiMechanism">新机制药物（First-in-class）
+                                        <span class="tag tag-w">+2分</span>
+                                        <span class="tag tag-sd">🔗SD联动</span>
+                                    </label>
+                                </div>
+                                <div class="cb-item" id="item_majorDisease">
+                                    <input type="checkbox" id="majorDisease" onchange="tumorCalculate()">
+                                    <label for="majorDisease">重大疾病（肿瘤/罕见病）
+                                        <span class="tag tag-w">+2分</span>
+                                    </label>
+                                </div>
+                                <div class="cb-item hot" id="item_significantImprove">
+                                    <input type="checkbox" id="significantImprove" onchange="tumorCalculate()">
+                                    <label for="significantImprove">显著疗效改善（OS延长≥3月等）
+                                        <span class="tag tag-w">+2分</span>
+                                    </label>
+                                </div>
+                                <div class="cb-item" id="item_globalSync">
+                                    <input type="checkbox" id="globalSync" onchange="tumorCalculate()">
+                                    <label for="globalSync">全球同步/中国首发上市
+                                        <span class="tag tag-w">+2分</span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-hd" onclick="toggleCard('marketSection')">
+                            <div class="card-hd-left" style="color:var(--warning);">📈 市场性溢价（Marketability & Pediatric）</div>
+                            <div style="display:flex;align-items:center;gap:7px;">
+                                <span class="score-badge score-amber" id="marketScore">0分</span>
+                                <span style="color:#9ca3af;font-size:11px;" id="arrow_marketSection">▸</span>
+                            </div>
+                        </div>
+                        <div class="card-body" id="marketSection" style="display:none;">
+                            <div class="cb-grid" style="grid-template-columns:1fr;">
+                                <div class="cb-item">
+                                    <input type="checkbox" id="orphanDrug" onchange="tumorCalculate()">
+                                    <label for="orphanDrug">🌟 孤儿药认定（罕见病/罕见肿瘤，患病率＜1/10000）
+                                        <span class="tag tag-w">市场性溢价I: 10-20%（取中值15%）</span>
+                                    </label>
+                                </div>
+                                <div class="cb-item">
+                                    <input type="checkbox" id="smallMarket" onchange="tumorCalculate()">
+                                    <label for="smallMarket">📉 小市场规模适应症（Niche Indication，患者数少）
+                                        <span class="tag tag-w">市场性溢价II: 5%</span>
+                                    </label>
+                                </div>
+                                <div class="cb-item">
+                                    <input type="checkbox" id="pediatric" onchange="tumorCalculate()">
+                                    <label for="pediatric">👶 儿科适应症/儿童肿瘤用法（含儿童罕见肿瘤）
+                                        <span class="tag tag-w">儿科溢价: 5-20%（取中值12.5%）</span>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="market-note">
+                                📊 论文敏感度排序：<strong>罕见病药物 &gt; 儿童药物 &gt; 小市场药物</strong>（SAKIGAKE认证后5年内联动带动市场溢价提升）
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-hd" onclick="toggleCard('chinaSection')">
+                            <div class="card-hd-left" style="color:var(--danger);">🇨🇳 中国医保情境（NRDL谈判调整）</div>
+                            <span style="color:#9ca3af;font-size:11px;" id="arrow_chinaSection">▸</span>
+                        </div>
+                        <div class="card-body" id="chinaSection" style="display:none;">
+                            <div class="slider-group">
+                                <div class="slider-label">
+                                    <span>NRDL谈判降价幅度</span>
+                                    <strong id="nrdlDiscountDisplay" style="color:var(--danger);">50%</strong>
+                                </div>
+                                <input type="range" id="nrdlDiscount" min="15" max="80" value="50" step="5"
+                                    oninput="updateSlider('nrdlDiscount','nrdlDiscountDisplay','%')">
+                                <div class="slider-ticks">
+                                    <span>15%（优质创新）</span>
+                                    <span>50%（历史均值）</span>
+                                    <span>80%（高竞争）</span>
+                                </div>
+                            </div>
+                            <div class="slider-group">
+                                <div class="slider-label">
+                                    <span>预计医保准入概率</span>
+                                    <strong id="nrdlProbDisplay" style="color:var(--success);">70%</strong>
+                                </div>
+                                <input type="range" id="nrdlProb" min="10" max="100" value="70" step="10"
+                                    oninput="updateSlider('nrdlProb','nrdlProbDisplay','%')">
+                                <div class="slider-ticks">
+                                    <span>10%（难度高）</span>
+                                    <span>70%（中性预期）</span>
+                                    <span>100%（确定准入）</span>
+                                </div>
+                            </div>
+                            <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:6px; padding:8px 10px; font-size:11px; color:#166534; margin-top:4px;">
+                                📌 <strong>参考数据：</strong>中国历届NRDL谈判平均降幅约50-60%（2017-2024），肿瘤药优先考量临床价值和未满足需求；创新性强的药物通常降幅较低（30-40%）
+                            </div>
+                        </div>
+                    </div>
+
+                    <button class="btn-calc" onclick="tumorCalculate()">🔄 计算综合溢价系数</button>
+                    <button class="btn-reset" onclick="resetAll()">↺ 清空所有选项</button>
+                </div>
+
+                <!-- RIGHT: RESULT -->
+                <div class="result-section">
+                    <div class="result-hero">
+                        <div class="hero-label">综合溢价系数 (Premium Coefficient)</div>
+                        <div class="hero-coeff" id="totalCoefficient">1.00</div>
+                        <div class="hero-sub">较可比药物溢价 <span id="premiumPctDisplay">+0.0%</span></div>
+                    </div>
+
+                    <div class="radar-card">
+                        <div class="radar-title">📡 五维度溢价雷达图</div>
+                        <svg id="radarSvg" viewBox="0 0 300 270" style="width:100%;max-height:200px;display:block;margin:0 auto;"></svg>
+                    </div>
+
+                    <div>
+                        <div class="price-section-hd">💰 建议年治疗费用 · 基于可比药 <span id="basePriceDisplay2">36.5</span> 万元</div>
+                        <div class="price-grid-3">
+                            <div class="pbox cons">
+                                <div class="pbox-lbl">保守 P25</div>
+                                <div class="pbox-val" id="conservativePrice">36.5万</div>
+                            </div>
+                            <div class="pbox base">
+                                <div class="pbox-lbl">基准 P50</div>
+                                <div class="pbox-val" id="basePrice">36.5万</div>
+                            </div>
+                            <div class="pbox opti">
+                                <div class="pbox-lbl">乐观 P75</div>
+                                <div class="pbox-val" id="optimisticPrice">36.5万</div>
+                            </div>
+                        </div>
+                        <div class="nrdl-hd" style="margin-top:10px;">🏥 中国NRDL医保情境参考</div>
+                        <div class="price-grid-2">
+                            <div class="pbox nrdl">
+                                <div class="pbox-lbl">谈判后挂网价</div>
+                                <div class="pbox-val" id="nrdlPrice">18.3万</div>
+                            </div>
+                            <div class="pbox exp">
+                                <div class="pbox-lbl">期望收益（概率加权）</div>
+                                <div class="pbox-val" id="expectedPrice">—</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="breakdown-card">
+                        <div class="bk-hd">📋 溢价拆解分析（论文公式 Table 2）</div>
+                        <div class="bk-row">
+                            <span class="bk-name">💎 价值溢价 (系数 ×1.8)</span>
+                            <span class="bk-val zero" id="valuePremiumPct">0%</span>
+                        </div>
+                        <div class="bk-row">
+                            <span class="bk-name">🚀 SAKIGAKE溢价 (系数 ×1.15)</span>
+                            <span class="bk-val zero" id="sakigakePremiumPct">0%</span>
+                        </div>
+                        <div class="bk-row">
+                            <span class="bk-name">🌟 市场性溢价I-孤儿药 (系数 ×1.15)</span>
+                            <span class="bk-val zero" id="market1Pct">0%</span>
+                        </div>
+                        <div class="bk-row">
+                            <span class="bk-name">📉 市场性溢价II-小市场 (系数 ×1.05)</span>
+                            <span class="bk-val zero" id="market2Pct">0%</span>
+                        </div>
+                        <div class="bk-row">
+                            <span class="bk-name">👶 儿科溢价 (系数 ×1.125)</span>
+                            <span class="bk-val zero" id="pediatricPct">0%</span>
+                        </div>
+                        <div class="bk-row">
+                            <span class="bk-name" style="font-size:13px;color:var(--primary);">∑ 合计加权系数</span>
+                            <span class="bk-val total" id="weightedTotal">1.000</span>
+                        </div>
+                    </div>
+
+                    <div class="sens-section">
+                        <div class="sens-title">🔥 关键变量敏感度排序（来自论文单因素敏感性分析）</div>
+                        <div class="sens-row">
+                            <span class="sens-lbl">联合用药疗效</span>
+                            <div class="sens-bar-wrap"><div class="sens-fill" style="width:96%"></div></div>
+                            <span class="sens-val">最高</span>
+                        </div>
+                        <div class="sens-row">
+                            <span class="sens-lbl">更快起效机制</span>
+                            <div class="sens-bar-wrap"><div class="sens-fill" style="width:91%"></div></div>
+                            <span class="sens-val">极高</span>
+                        </div>
+                        <div class="sens-row">
+                            <span class="sens-lbl">新作用部位</span>
+                            <div class="sens-bar-wrap"><div class="sens-fill" style="width:88%"></div></div>
+                            <span class="sens-val">极高</span>
+                        </div>
+                        <div class="sens-row">
+                            <span class="sens-lbl">国家认证加分</span>
+                            <div class="sens-bar-wrap"><div class="sens-fill" style="width:83%"></div></div>
+                            <span class="sens-val">高</span>
+                        </div>
+                        <div class="sens-row">
+                            <span class="sens-lbl">无标准治疗</span>
+                            <div class="sens-bar-wrap"><div class="sens-fill" style="width:78%"></div></div>
+                            <span class="sens-val">高</span>
+                        </div>
+                        <div class="sens-row">
+                            <span class="sens-lbl">疗效优于对照</span>
+                            <div class="sens-bar-wrap"><div class="sens-fill" style="width:75%"></div></div>
+                            <span class="sens-val">高</span>
+                        </div>
+                        <div class="sens-row">
+                            <span class="sens-lbl">新机制(SAKIGAKE)</span>
+                            <div class="sens-bar-wrap"><div class="sens-fill" style="width:70%"></div></div>
+                            <span class="sens-val">中高</span>
+                        </div>
+                        <div class="sens-row">
+                            <span class="sens-lbl">罕见病药物</span>
+                            <div class="sens-bar-wrap"><div class="sens-fill" style="width:65%"></div></div>
+                            <span class="sens-val">中高</span>
+                        </div>
+                    </div>
+
+                    <div class="note">
+                        <strong>💡 SD模型核心结论：</strong><br>
+                        价值维度权重<strong>1.8</strong>最高（长期增长最快）；SAKIGAKE认证对新机制存在正向反馈，带动价值溢价提升。论文50年模拟显示政策效应约<strong>5年后显著放大</strong>，罕见病和小市场药物长期价值增长最为突出。
+                    </div>
+
+                    <div class="formula">
+                        <strong>SD计算公式（Xing et al., 2025 Table 2）：</strong><br>
+                        Variation = <strong>1.8</strong>×Value + <strong>1.15</strong>×SAKIGAKE<br>
+                        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;+ <strong>1.15</strong>×OrphanDrug + <strong>1.05</strong>×SmallMkt + <strong>1.125</strong>×Pediatric<br>
+                        SD联动规则：NewMechanism → NewActionPart(+2) + NewTarget(+1)<br>
+                        Value溢价范围：5%–120%（突破性最高120%）
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== ADC计算器 ===== -->
+    <div id="adcCalculator" class="calculator-container adc-calc">
+        <div class="nav-header" style="background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 40%, #3730a3 100%);">
+            <div class="nav-header-left">
+                <button class="back-btn" onclick="showLanding()">← 返回首页</button>
+                <div class="nav-brand">潮药bar <span>| ADC药物经济学定价计算器</span></div>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+                <span style="background: rgba(255,255,255,0.15); border-radius: 20px; padding: 4px 10px; font-size: 11px;">Markov模型</span>
+                <span style="background: rgba(255,255,255,0.15); border-radius: 20px; padding: 4px 10px; font-size: 11px;">ICER反推</span>
+            </div>
+        </div>
+
+        <div class="main-grid">
+            <!-- LEFT: PARAMETERS -->
+            <div class="params-col">
+                <div class="panel">
+                    <div class="panel-header primary">⚡ 快速预设</div>
+                    <div class="panel-body">
+                        <div class="section-label">常见 ADC 应用场景</div>
+                        <div class="preset-row">
+                            <button class="preset-btn active" onclick="loadPreset('db03')">HER2+ BC<br><small>T-DXd vs T-DM1</small></button>
+                            <button class="preset-btn" onclick="loadPreset('db04')">HER2-low BC<br><small>T-DXd vs 化疗</small></button>
+                            <button class="preset-btn" onclick="loadPreset('nsclc')">NSCLC<br><small>T-DXd vs 多西他赛</small></button>
+                            <button class="preset-btn" onclick="loadPreset('gc')">胃癌<br><small>RC48 vs 化疗</small></button>
+                        </div>
+                        <div class="hint">💡 预设数据来自公开临床试验及文献估算，仅供方法学演示。</div>
+                    </div>
+                </div>
+
+                <div class="panel">
+                    <div class="panel-header slate">⚙️ 模型基本设置</div>
+                    <div class="panel-body">
+                        <div class="field-row">
+                            <div class="field">
+                                <label>模拟周期长度</label>
+                                <input type="number" id="adc_cycleLen" value="1" min="0.5" max="3" step="0.5">
+                                <span class="unit">月/周期</span>
+                            </div>
+                            <div class="field">
+                                <label>时间跨度</label>
+                                <input type="number" id="adc_horizon" value="120" min="24" max="360" step="12">
+                                <span class="unit">月</span>
+                            </div>
+                        </div>
+                        <div class="field-row" style="margin-top:8px">
+                            <div class="field">
+                                <label>年贴现率</label>
+                                <input type="number" id="adc_discountRate" value="5" min="0" max="10" step="0.5">
+                                <span class="unit">% / 年</span>
+                            </div>
+                            <div class="field">
+                                <label>WTP 阈值</label>
+                                <input type="number" id="adc_wtp" value="150000" min="50000" max="500000" step="10000">
+                                <span class="unit">元 / QALY</span>
+                            </div>
+                        </div>
+                        <div class="hint" style="margin-top:8px">中国 NRDL 谈判参考阈值：1× ~ 3× 人均 GDP，约 ¥89,000–¥267,000/QALY（2024年）</div>
+                    </div>
+                </div>
+
+                <div class="panel">
+                    <div class="panel-header primary">💊 ADC 试验药参数</div>
+                    <div class="panel-body">
+                        <div class="section-label">转移概率（月概率，指数分布假设）</div>
+                        <div class="field-row">
+                            <div class="field">
+                                <label>中位 PFS（月）</label>
+                                <input type="number" id="adc_mPFS" value="28.8" min="1" step="0.1" oninput="syncPFS('adc')">
+                                <span class="unit">自动换算月进展概率</span>
+                            </div>
+                            <div class="field">
+                                <label>月进展概率（p₁₂）</label>
+                                <input type="number" id="adc_pProg" value="0.0240" min="0.001" max="0.5" step="0.001" oninput="syncMPFS('adc')">
+                            </div>
+                        </div>
+                        <div class="field-row" style="margin-top:8px">
+                            <div class="field">
+                                <label>PFS期月死亡概率（p₁₃）</label>
+                                <input type="number" id="adc_pDeathPFS" value="0.003" min="0.001" max="0.1" step="0.001">
+                            </div>
+                            <div class="field">
+                                <label>PPS期月死亡概率（p₂₃）</label>
+                                <input type="number" id="adc_pDeathPPS" value="0.045" min="0.005" max="0.3" step="0.005">
+                            </div>
+                        </div>
+                        <div class="section-label" style="margin-top:10px">效用值（QALY权重）</div>
+                        <div class="field-row">
+                            <div class="field">
+                                <label>PFS 效用值（u₁）</label>
+                                <input type="number" id="adc_uPFS" value="0.830" min="0.1" max="1" step="0.01">
+                            </div>
+                            <div class="field">
+                                <label>PPS 效用值（u₂）</label>
+                                <input type="number" id="adc_uPPS" value="0.650" min="0.1" max="1" step="0.01">
+                            </div>
+                        </div>
+                        <div class="section-label" style="margin-top:10px">非药物成本（元/月）</div>
+                        <div class="field-row">
+                            <div class="field">
+                                <label>PFS期非药成本</label>
+                                <input type="number" id="adc_cPFS" value="5000" min="0" step="500">
+                                <span class="unit">元/月（监测、支持治疗等）</span>
+                            </div>
+                            <div class="field">
+                                <label>PPS期成本</label>
+                                <input type="number" id="adc_cPPS" value="8000" min="0" step="500">
+                                <span class="unit">元/月（二线治疗等）</span>
+                            </div>
+                        </div>
+                        <div class="section-label" style="margin-top:10px">给药方案</div>
+                        <div class="field-row">
+                            <div class="field">
+                                <label>给药间隔（周）</label>
+                                <input type="number" id="adc_dosing" value="3" min="1" max="8" step="1">
+                            </div>
+                            <div class="field">
+                                <label>每疗程给药次数</label>
+                                <input type="number" id="adc_dosesPerCourse" value="1" min="1" max="4" step="1">
+                                <span class="unit">次/疗程（0=持续用药）</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="panel">
+                    <div class="panel-header green">⚗️ 对照药参数</div>
+                    <div class="panel-body">
+                        <div class="section-label">转移概率</div>
+                        <div class="field-row">
+                            <div class="field">
+                                <label>中位 PFS（月）</label>
+                                <input type="number" id="comp_mPFS" value="6.8" min="1" step="0.1" oninput="syncPFS('comp')">
+                            </div>
+                            <div class="field">
+                                <label>月进展概率（p₁₂）</label>
+                                <input type="number" id="comp_pProg" value="0.0952" min="0.001" max="0.5" step="0.001" oninput="syncMPFS('comp')">
+                            </div>
+                        </div>
+                        <div class="field-row" style="margin-top:8px">
+                            <div class="field">
+                                <label>PFS期月死亡概率（p₁₃）</label>
+                                <input type="number" id="comp_pDeathPFS" value="0.005" min="0.001" max="0.1" step="0.001">
+                            </div>
+                            <div class="field">
+                                <label>PPS期月死亡概率（p₂₃）</label>
+                                <input type="number" id="comp_pDeathPPS" value="0.060" min="0.005" max="0.3" step="0.005">
+                            </div>
+                        </div>
+                        <div class="section-label" style="margin-top:10px">效用值</div>
+                        <div class="field-row">
+                            <div class="field">
+                                <label>PFS 效用值（u₁）</label>
+                                <input type="number" id="comp_uPFS" value="0.780" min="0.1" max="1" step="0.01">
+                            </div>
+                            <div class="field">
+                                <label>PPS 效用值（u₂）</label>
+                                <input type="number" id="comp_uPPS" value="0.600" min="0.1" max="1" step="0.01">
+                            </div>
+                        </div>
+                        <div class="section-label" style="margin-top:10px">药物成本</div>
+                        <div class="field-row">
+                            <div class="field">
+                                <label>PFS期非药成本</label>
+                                <input type="number" id="comp_cPFS" value="5000" min="0" step="500">
+                                <span class="unit">元/月</span>
+                            </div>
+                            <div class="field">
+                                <label>药物月成本</label>
+                                <input type="number" id="comp_drugCost" value="15000" min="0" step="1000">
+                                <span class="unit">元/月</span>
+                            </div>
+                        </div>
+                        <div class="field" style="margin-top:8px">
+                            <label>PPS期月成本</label>
+                            <input type="number" id="comp_cPPS" value="8000" min="0" step="500">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- RIGHT: RESULTS -->
+            <div class="results-col">
+                <div class="panel">
+                    <div class="panel-header slate">💰 最大可接受药物价格（基于 WTP 阈值反推）</div>
+                    <div class="panel-body">
+                        <div class="price-grid">
+                            <div class="price-card primary">
+                                <div class="label">最大月价格</div>
+                                <div class="value" id="out_monthly">—</div>
+                                <div class="sub">元 / 月</div>
+                            </div>
+                            <div class="price-card green">
+                                <div class="label">最大每次给药价格</div>
+                                <div class="value" id="out_infusion">—</div>
+                                <div class="sub">元 / 次</div>
+                            </div>
+                            <div class="price-card orange">
+                                <div class="label">最大年费用</div>
+                                <div class="value" id="out_annual">—</div>
+                                <div class="sub">元 / 年</div>
+                            </div>
+                        </div>
+
+                        <div id="icer_bar_section" style="margin-top:14px">
+                            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+                                <span style="font-size:12px;font-weight:600">ICER 位置（以最大可接受价格计算）</span>
+                                <span id="icer_tag" class="tag green">—</span>
+                            </div>
+                            <div class="icer-bar-wrap">
+                                <div class="icer-bar-track">
+                                    <div class="icer-bar-fill" id="icer_bar" style="width:0%;background:var(--green)"></div>
+                                </div>
+                                <div class="icer-bar-labels">
+                                    <span>¥0</span>
+                                    <span id="icer_bar_wtp_label">WTP ¥150,000/QALY</span>
+                                    <span id="icer_bar_2x">¥300,000/QALY</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="panel">
+                    <div class="panel-header slate">📊 临床-经济学指标对比</div>
+                    <div class="panel-body">
+                        <table class="metrics-table">
+                            <thead>
+                                <tr>
+                                    <th>指标</th>
+                                    <th>ADC 组</th>
+                                    <th>对照组</th>
+                                    <th>增量</th>
+                                    <th>评估</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>总 QALYs（贴现后）</td>
+                                    <td id="m_qaly_adc">—</td>
+                                    <td id="m_qaly_comp">—</td>
+                                    <td id="m_delta_qaly">—</td>
+                                    <td id="m_qaly_eval">—</td>
+                                </tr>
+                                <tr>
+                                    <td>生命年（LYs）</td>
+                                    <td id="m_ly_adc">—</td>
+                                    <td id="m_ly_comp">—</td>
+                                    <td id="m_delta_ly">—</td>
+                                    <td>—</td>
+                                </tr>
+                                <tr>
+                                    <td>总费用（非药，贴现后）</td>
+                                    <td id="m_cost_adc">—</td>
+                                    <td id="m_cost_comp">—</td>
+                                    <td id="m_delta_cost">—</td>
+                                    <td>—</td>
+                                </tr>
+                                <tr>
+                                    <td>累计贴现 PFS 患者月</td>
+                                    <td id="m_pfsMo">—</td>
+                                    <td>—</td>
+                                    <td>—</td>
+                                    <td style="font-size:11px;color:var(--sub)">价格计算分母</td>
+                                </tr>
+                                <tr>
+                                    <td>ICER（最大可接受价格下）</td>
+                                    <td colspan="3" id="m_icer" style="font-weight:700">—</td>
+                                    <td id="m_icer_eval">—</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="charts-row">
+                    <div class="panel">
+                        <div class="panel-header primary">📈 Markov 状态迹线</div>
+                        <div class="panel-body">
+                            <div class="chart-wrap"><canvas id="markovChart"></canvas></div>
+                        </div>
+                    </div>
+                    <div class="panel">
+                        <div class="panel-header orange">🎯 成本-效益平面（价格敏感性）</div>
+                        <div class="panel-body">
+                            <div class="chart-wrap"><canvas id="cePlaneChart"></canvas></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="panel">
+                    <div class="panel-header slate">🔍 价格随 WTP 阈值的变化（单因素敏感性）</div>
+                    <div class="panel-body">
+                        <table class="sens-table">
+                            <thead>
+                                <tr>
+                                    <th>WTP 阈值（元/QALY）</th>
+                                    <th>最大月价格（元）</th>
+                                    <th>最大单次给药价格（元）</th>
+                                    <th>最大年费（元）</th>
+                                    <th>相对基准</th>
+                                </tr>
+                            </thead>
+                            <tbody id="sens_tbody"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="panel">
+                    <div class="panel-header slate">📐 模型方法说明</div>
+                    <div class="panel-body">
+                        <div class="disclaimer">
+                            <strong>三状态 Markov 模型</strong>：PFS（无进展）→ PPS（疾病进展）→ Dead（死亡，吸收态）。采用指数分布将中位生存时间转换为月概率（p = 1 − 0.5^(1/mPFS)）。<br>
+                            <strong>半周期校正</strong>：在每个周期末计算效用和费用，引入半周期修正以减少偏差。<br>
+                            <strong>贴现</strong>：对费用和效益均采用设定的年贴现率（复利，月折算）。<br>
+                            <strong>价格反推公式</strong>：ICER = (ΔC_非药 + P × ∑n_PFS·df) / ΔQALY = WTP → P = (WTP × ΔQALY − ΔC_非药) / ∑n_PFS·df<br>
+                            <strong>免责声明</strong>：本工具仅供方法学研究与内部讨论，所有输出均基于假设参数，不构成定价决策依据。
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ===== 导航控制 =====
+        function showCalculator(type) {
+            document.getElementById('landingPage').style.display = 'none';
+            if (type === 'tumor') {
+                document.getElementById('tumorCalculator').style.display = 'block';
+                document.getElementById('adcCalculator').style.display = 'none';
+                tumorCalculate();
+            } else {
+                document.getElementById('tumorCalculator').style.display = 'none';
+                document.getElementById('adcCalculator').style.display = 'block';
+                adcUpdate();
+            }
+        }
+
+        function showLanding() {
+            document.getElementById('landingPage').style.display = 'flex';
+            document.getElementById('tumorCalculator').style.display = 'none';
+            document.getElementById('adcCalculator').style.display = 'none';
+        }
+
+        // ===== 肿瘤计算器逻辑 =====
+        const TUMOR_WEIGHTS = {
+            newActionPart: 2, newTarget: 1, noStandard: 1, nhsAccreditation1: 1,
+            betterEfficacy: 2, betterSafety: 1, rctEvidence: 2, otherEvidence: 1,
+            poorOutcome: 1, standardOption: 1, fastOnset: 1, combination: 1,
+            lessInvasive: 1, easyAdmin: 1, stableLevel: 1, nhsAccreditation2: 1,
+            sakiMechanism: 2, majorDisease: 2, significantImprove: 2, globalSync: 2
+        };
+
+        const VALUE_IDS = ['newActionPart','newTarget','noStandard','nhsAccreditation1',
+                           'betterEfficacy','betterSafety','rctEvidence','otherEvidence',
+                           'poorOutcome','standardOption','fastOnset','combination',
+                           'lessInvasive','easyAdmin','stableLevel','nhsAccreditation2'];
+        const SAKI_IDS  = ['sakiMechanism','majorDisease','significantImprove','globalSync'];
+
+        let basePrice = 36.5;
+        let sdActive = false;
+
+        function toggleCard(id) {
+            const body = document.getElementById(id);
+            const arrow = document.getElementById('arrow_' + id);
+            const isOpen = body.style.display !== 'none';
+            body.style.display = isOpen ? 'none' : 'block';
+            if (arrow) arrow.textContent = isOpen ? '▸' : '▾';
+        }
+
+        function updateSlider(sid, did, unit) {
+            document.getElementById(did).textContent = document.getElementById(sid).value + unit;
+            tumorCalculate();
+        }
+
+        function updateComparator() {
+            const sel = document.getElementById('comparatorSelect');
+            const opt = sel.options[sel.selectedIndex];
+
+            if (sel.value === 'custom') {
+                document.getElementById('customPriceInput').style.display = 'block';
+                basePrice = parseFloat(document.getElementById('customPrice').value) || 0;
+            } else {
+                document.getElementById('customPriceInput').style.display = 'none';
+                basePrice = parseFloat(sel.value);
+            }
+
+            document.getElementById('basePriceDisplay').textContent = basePrice;
+            document.getElementById('basePriceDisplay2').textContent = basePrice;
+
+            const ctx = opt.dataset.ctx || '—';
+            const cls = opt.dataset.class || '—';
+            document.getElementById('ctxDisplay').textContent = ctx;
+            document.getElementById('classDisplay').textContent = cls;
+            tumorCalculate();
+        }
+
+        document.getElementById('customPrice')?.addEventListener('input', function() {
+            basePrice = parseFloat(this.value) || 0;
+            document.getElementById('basePriceDisplay').textContent = basePrice;
+            document.getElementById('basePriceDisplay2').textContent = basePrice;
+            tumorCalculate();
+        });
+
+        function handleSakigake() {
+            sdActive = document.getElementById('sakiMechanism').checked;
+            const banner = document.getElementById('sdBanner');
+            const itemAP = document.getElementById('item_newActionPart');
+            const itemNT = document.getElementById('item_newTarget');
+            const cbAP = document.getElementById('newActionPart');
+            const cbNT = document.getElementById('newTarget');
+
+            if (sdActive) {
+                banner.classList.add('on');
+                itemAP.classList.add('sd-link');
+                itemNT.classList.add('sd-link');
+                cbAP.checked = true;
+                cbNT.checked = true;
+            } else {
+                banner.classList.remove('on');
+                itemAP.classList.remove('sd-link');
+                itemNT.classList.remove('sd-link');
+            }
+            tumorCalculate();
+        }
+
+        function resetAll() {
+            document.querySelectorAll('#tumorCalculator input[type="checkbox"]').forEach(cb => cb.checked = false);
+            document.getElementById('sdBanner').classList.remove('on');
+            document.getElementById('item_newActionPart').classList.remove('sd-link');
+            document.getElementById('item_newTarget').classList.remove('sd-link');
+            sdActive = false;
+            document.getElementById('nrdlDiscount').value = 50;
+            document.getElementById('nrdlDiscountDisplay').textContent = '50%';
+            document.getElementById('nrdlProb').value = 70;
+            document.getElementById('nrdlProbDisplay').textContent = '70%';
+            tumorCalculate();
+        }
+
+        function drawRadar(scores) {
+            const norms = [
+                Math.min(scores[0] / 1.2, 1),
+                Math.min(scores[1] / 0.20, 1),
+                Math.min(scores[2] / 0.20, 1),
+                Math.min(scores[3] / 0.05, 1),
+                Math.min(scores[4] / 0.20, 1)
+            ];
+
+            const svg = document.getElementById('radarSvg');
+            const cx = 150, cy = 135, R = 95;
+            const n = 5;
+            const lbls = ['价值溢价','SAKIGAKE','孤儿药溢价','小市场溢价','儿科溢价'];
+            const cols = ['#3b82f6','#7c3aed','#f59e0b','#10b981','#ef4444'];
+            const pcts = [scores[0]*100, scores[1]*100, scores[2]*100, scores[3]*100, scores[4]*100];
+
+            let html = '';
+
+            [0.25, 0.5, 0.75, 1.0].forEach(lv => {
+                const pts = Array.from({length: n}, (_,i) => {
+                    const a = (2*Math.PI*i/n) - Math.PI/2;
+                    return [cx + R*lv*Math.cos(a), cy + R*lv*Math.sin(a)].join(',');
+                }).join(' ');
+                html += `<polygon points="${pts}" fill="none" stroke="#e5e7eb" stroke-width="1"/>`;
+            });
+
+            for (let i = 0; i < n; i++) {
+                const a = (2*Math.PI*i/n) - Math.PI/2;
+                html += `<line x1="${cx}" y1="${cy}" x2="${cx+R*Math.cos(a)}" y2="${cy+R*Math.sin(a)}" stroke="#d1d5db" stroke-width="1"/>`;
+            }
+
+            const dataPts = Array.from({length: n}, (_,i) => {
+                const a = (2*Math.PI*i/n) - Math.PI/2;
+                const r = R * norms[i];
+                return [cx + r*Math.cos(a), cy + r*Math.sin(a)].join(',');
+            }).join(' ');
+            html += `<polygon points="${dataPts}" fill="rgba(59,130,246,0.18)" stroke="#3b82f6" stroke-width="2"/>`;
+
+            for (let i = 0; i < n; i++) {
+                const a = (2*Math.PI*i/n) - Math.PI/2;
+                const px = cx + R*norms[i]*Math.cos(a);
+                const py = cy + R*norms[i]*Math.sin(a);
+                const lx = cx + (R+26)*Math.cos(a);
+                const ly = cy + (R+26)*Math.sin(a);
+                const anch = lx < cx-5 ? 'end' : lx > cx+5 ? 'start' : 'middle';
+
+                html += `<circle cx="${px.toFixed(1)}" cy="${py.toFixed(1)}" r="4" fill="${cols[i]}" stroke="white" stroke-width="1.5"/>`;
+                html += `<text x="${lx.toFixed(1)}" y="${(ly-7).toFixed(1)}" text-anchor="${anch}" dominant-baseline="middle" font-size="9.5" fill="#374151" font-weight="600">${lbls[i]}</text>`;
+                html += `<text x="${lx.toFixed(1)}" y="${(ly+5).toFixed(1)}" text-anchor="${anch}" dominant-baseline="middle" font-size="9" fill="${cols[i]}" font-weight="700">${pcts[i].toFixed(1)}%</text>`;
+            }
+
+            svg.innerHTML = html;
+        }
+
+        function tumorCalculate() {
+            let vScore = 0;
+            VALUE_IDS.forEach(id => {
+                const el = document.getElementById(id);
+                if (el && el.checked) vScore += TUMOR_WEIGHTS[id];
+            });
+            const valuePR = vScore > 0 ? Math.max(0.05, Math.min(vScore / 10, 1.2)) : 0;
+
+            let sScore = 0;
+            SAKI_IDS.forEach(id => {
+                const el = document.getElementById(id);
+                if (el && el.checked) sScore += TUMOR_WEIGHTS[id];
+            });
+            const sakiR = sScore >= 6 ? 0.20 : sScore >= 4 ? 0.15 : sScore >= 2 ? 0.10 : 0;
+
+            const orphan = document.getElementById('orphanDrug').checked;
+            const small = document.getElementById('smallMarket').checked;
+            const pedi = document.getElementById('pediatric').checked;
+            const m1R = orphan ? 0.15 : 0;
+            const m2R = small ? 0.05 : 0;
+            const pedR = pedi ? 0.125 : 0;
+
+            const wV = 1.8 * valuePR;
+            const wS = 1.15 * sakiR;
+            const wM1 = 1.15 * m1R;
+            const wM2 = 1.05 * m2R;
+            const wP = 1.125 * pedR;
+            const totalCoeff = 1 + wV + wS + wM1 + wM2 + wP;
+
+            const consCoeff = 1 + wV*0.70 + wS*0.50 + wM1*0.60 + wM2*0.80 + wP*0.50;
+            const optiCoeff = 1 + wV*1.20 + wS*1.20 + wM1*1.30 + wM2*1.20 + wP*1.50;
+
+            const pBase = basePrice * totalCoeff;
+            const pCons = basePrice * consCoeff;
+            const pOpti = basePrice * optiCoeff;
+
+            const disc = parseFloat(document.getElementById('nrdlDiscount').value) / 100;
+            const prob = parseFloat(document.getElementById('nrdlProb').value) / 100;
+            const pNrdl = pBase * (1 - disc);
+            const pExpect = pNrdl * prob + pBase * (1 - prob);
+
+            document.getElementById('valueScore').textContent = vScore + '分';
+            document.getElementById('sakigakeScore').textContent = sScore + '分';
+            let mScore = 0;
+            if (orphan) mScore += 2;
+            if (small) mScore += 1;
+            if (pedi) mScore += 2;
+            document.getElementById('marketScore').textContent = mScore + '分';
+
+            const premiumPct = ((totalCoeff - 1) * 100).toFixed(1);
+            document.getElementById('totalCoefficient').textContent = totalCoeff.toFixed(2);
+            document.getElementById('premiumPctDisplay').textContent = (totalCoeff >= 1 ? '+' : '') + premiumPct + '%';
+
+            const fmt = v => v.toFixed(1) + '万';
+            document.getElementById('basePrice').textContent = fmt(pBase);
+            document.getElementById('conservativePrice').textContent = fmt(pCons);
+            document.getElementById('optimisticPrice').textContent = fmt(pOpti);
+            document.getElementById('nrdlPrice').textContent = fmt(pNrdl);
+            document.getElementById('expectedPrice').textContent = fmt(pExpect);
+
+            const setBK = (id, val) => {
+                const el = document.getElementById(id);
+                el.textContent = (val * 100).toFixed(1) + '%';
+                el.className = 'bk-val' + (val === 0 ? ' zero' : '');
+            };
+            setBK('valuePremiumPct', valuePR);
+            setBK('sakigakePremiumPct', sakiR);
+            setBK('market1Pct', m1R);
+            setBK('market2Pct', m2R);
+            setBK('pediatricPct', pedR);
+            document.getElementById('weightedTotal').textContent = totalCoeff.toFixed(3);
+
+            document.querySelectorAll('.tumor-calc .cb-item').forEach(item => {
+                const cb = item.querySelector('input[type="checkbox"]');
+                if (cb) item.classList.toggle('checked', cb.checked);
+            });
+
+            drawRadar([valuePR, sakiR, m1R, m2R, pedR]);
+        }
+
+        // ===== ADC计算器逻辑 =====
+        const PRESETS = {
+            db03: {
+                name: 'HER2+ BC · T-DXd vs T-DM1 (DESTINY-Breast03)',
+                adc: { mPFS:28.8, pProg:0.0240, pDeathPFS:0.003, pDeathPPS:0.045, uPFS:0.830, uPPS:0.650, cPFS:5000, cPPS:8000, dosing:3 },
+                comp: { mPFS:6.8, pProg:0.0952, pDeathPFS:0.005, pDeathPPS:0.060, uPFS:0.780, uPPS:0.600, cPFS:5000, cPPS:8000, drugCost:15000 },
+                model:{ cycleLen:1, horizon:120, discountRate:5, wtp:150000 }
+            },
+            db04: {
+                name: 'HER2-low BC · T-DXd vs 标准化疗 (DESTINY-Breast04)',
+                adc: { mPFS:9.9, pProg:0.0668, pDeathPFS:0.006, pDeathPPS:0.055, uPFS:0.800, uPPS:0.630, cPFS:4000, cPPS:7000, dosing:3 },
+                comp: { mPFS:5.1, pProg:0.1245, pDeathPFS:0.008, pDeathPPS:0.070, uPFS:0.760, uPPS:0.590, cPFS:4000, cPPS:7000, drugCost:6000 },
+                model:{ cycleLen:1, horizon:96, discountRate:5, wtp:150000 }
+            },
+            nsclc: {
+                name: 'NSCLC · T-DXd vs 多西他赛 (DESTINY-Lung02)',
+                adc: { mPFS:9.9, pProg:0.0668, pDeathPFS:0.010, pDeathPPS:0.070, uPFS:0.780, uPPS:0.600, cPFS:6000, cPPS:9000, dosing:3 },
+                comp: { mPFS:4.2, pProg:0.1504, pDeathPFS:0.015, pDeathPPS:0.090, uPFS:0.720, uPPS:0.560, cPFS:6000, cPPS:9000, drugCost:4000 },
+                model:{ cycleLen:1, horizon:84, discountRate:5, wtp:150000 }
+            },
+            gc: {
+                name: '胃癌 · 维迪西妥单抗 vs 化疗 (RC48-C005)',
+                adc: { mPFS:6.8, pProg:0.0952, pDeathPFS:0.012, pDeathPPS:0.080, uPFS:0.760, uPPS:0.580, cPFS:5000, cPPS:8000, dosing:2 },
+                comp: { mPFS:4.5, pProg:0.1398, pDeathPFS:0.018, pDeathPPS:0.095, uPFS:0.700, uPPS:0.540, cPFS:5000, cPPS:8000, drugCost:5000 },
+                model:{ cycleLen:1, horizon:72, discountRate:5, wtp:120000 }
+            }
+        };
+
+        let markovChart = null, cePlaneChart = null;
+
+        function runMarkov({ pProg, pDeathPFS, pDeathPPS, uPFS, uPPS, cPFS, cPPS, drugCostPerMonth,
+                             cycleLen, nCycles, discountRate }) {
+            let sPFS = 1.0, sPPS = 0.0, sDead = 0.0;
+            let totalQALY = 0, totalCost = 0, totalLY = 0;
+            let cumPFSdiscounted = 0;
+            const trace = [];
+            const dr_monthly = discountRate / 100 / 12;
+
+            for (let t = 0; t < nCycles; t++) {
+                const df = Math.pow(1 + dr_monthly, -t);
+                const pfsStart = sPFS, ppsStart = sPPS;
+
+                const newDead = sDead + sPFS * pDeathPFS + sPPS * pDeathPPS;
+                const newPPS = sPPS * (1 - pDeathPPS) + sPFS * pProg;
+                const newPFS = sPFS * (1 - pProg - pDeathPFS);
+                sPFS = newPFS; sPPS = newPPS; sDead = newDead;
+
+                const avgPFS = (pfsStart + sPFS) / 2;
+                const avgPPS = (ppsStart + sPPS) / 2;
+
+                const cycleYears = cycleLen / 12;
+                const qaly = (avgPFS * uPFS + avgPPS * uPPS) * cycleYears * df;
+                const cost = (avgPFS * (cPFS + drugCostPerMonth) + avgPPS * cPPS) * cycleLen * df;
+                const ly = (avgPFS + avgPPS) * cycleYears * df;
+
+                totalQALY += qaly;
+                totalCost += cost;
+                totalLY += ly;
+                cumPFSdiscounted += avgPFS * df;
+
+                trace.push({ month: (t + 1) * cycleLen, pfs: sPFS, pps: sPPS, dead: sDead });
+            }
+
+            return { totalQALY, totalCost, totalLY, cumPFSdiscounted, trace };
+        }
+
+        function calculatePrice(adcP, compP, model) {
+            const nCycles = Math.floor(model.horizon / model.cycleLen);
+
+            const adcResult = runMarkov({ ...adcP, drugCostPerMonth: 0,
+                cycleLen: model.cycleLen, nCycles, discountRate: model.discountRate });
+            const compResult = runMarkov({ ...compP, drugCostPerMonth: compP.drugCostPerMonth,
+                cycleLen: model.cycleLen, nCycles, discountRate: model.discountRate });
+
+            const deltaQALY = adcResult.totalQALY - compResult.totalQALY;
+            const deltaCost_noDrug = adcResult.totalCost - compResult.totalCost;
+
+            const maxTotalDrugCost = model.wtp * deltaQALY - deltaCost_noDrug;
+            const maxMonthlyPrice = maxTotalDrugCost / adcResult.cumPFSdiscounted;
+
+            const dosingMonths = adcP.dosing / 4.33;
+            const maxPerInfusion = maxMonthlyPrice * dosingMonths;
+            const maxAnnualCost = maxMonthlyPrice * 12;
+
+            const icer = model.wtp;
+
+            return {
+                maxMonthlyPrice, maxPerInfusion, maxAnnualCost,
+                deltaQALY,
+                adcQALY: adcResult.totalQALY, compQALY: compResult.totalQALY,
+                adcLY: adcResult.totalLY, compLY: compResult.totalLY,
+                adcCostNoDrug: adcResult.totalCost, compCost: compResult.totalCost,
+                deltaCost_noDrug,
+                cumPFSdiscounted: adcResult.cumPFSdiscounted,
+                icer,
+                adcTrace: adcResult.trace, compTrace: compResult.trace
+            };
+        }
+
+        function syncPFS(arm) {
+            const mEl = document.getElementById(arm + '_mPFS');
+            const pEl = document.getElementById(arm + '_pProg');
+            const m = parseFloat(mEl.value);
+            if (m > 0) pEl.value = (1 - Math.pow(0.5, 1 / m)).toFixed(4);
+            adcUpdate();
+        }
+
+        function syncMPFS(arm) {
+            const pEl = document.getElementById(arm + '_pProg');
+            const mEl = document.getElementById(arm + '_mPFS');
+            const p = parseFloat(pEl.value);
+            if (p > 0 && p < 1) mEl.value = (Math.log(0.5) / Math.log(1 - p)).toFixed(1);
+            adcUpdate();
+        }
+
+        function initCharts() {
+            if (markovChart) return;
+            const mc = document.getElementById('markovChart').getContext('2d');
+            markovChart = new Chart(mc, {
+                type: 'line',
+                data: { labels: [], datasets: [] },
+                options: {
+                    responsive: true, maintainAspectRatio: false, animation: { duration: 200 },
+                    plugins: { legend: { position: 'bottom', labels: { font: { size: 11 }, boxWidth: 12 } } },
+                    scales: {
+                        x: { title: { display: true, text: '月', font: { size: 11 } }, ticks: { font: { size: 10 }, maxTicksLimit: 10 } },
+                        y: { title: { display: true, text: '患者比例', font: { size: 11 } }, min: 0, max: 1, ticks: { font: { size: 10 } } }
+                    }
+                }
+            });
+
+            const cc = document.getElementById('cePlaneChart').getContext('2d');
+            cePlaneChart = new Chart(cc, {
+                type: 'scatter',
+                data: { datasets: [] },
+                options: {
+                    responsive: true, maintainAspectRatio: false, animation: { duration: 200 },
+                    plugins: { legend: { position: 'bottom', labels: { font: { size: 11 }, boxWidth: 12 } } },
+                    scales: {
+                        x: { title: { display: true, text: 'ΔQALY（增量效果）', font: { size: 11 } }, ticks: { font: { size: 10 } } },
+                        y: { title: { display: true, text: 'ΔCost（增量费用，元）', font: { size: 11 } }, ticks: { font: { size: 10 }, callback: v => (v/10000).toFixed(0) + '万' } }
+                    }
+                }
+            });
+        }
+
+        function updateCharts(results, model) {
+            const aT = results.adcTrace, cT = results.compTrace;
+            const labels = aT.map(r => r.month);
+            markovChart.data.labels = labels;
+            markovChart.data.datasets = [
+                { label: 'ADC-PFS', data: aT.map(r => r.pfs), borderColor:'#1d4ed8', backgroundColor:'rgba(29,78,216,.08)', tension:.3, borderWidth:2, pointRadius:0 },
+                { label: 'ADC-PPS', data: aT.map(r => r.pps), borderColor:'#1d4ed8', backgroundColor:'transparent', tension:.3, borderWidth:1.5, borderDash:[4,3], pointRadius:0 },
+                { label: 'ADC-Dead', data: aT.map(r => r.dead), borderColor:'#1d4ed8', backgroundColor:'transparent', tension:.3, borderWidth:1, borderDash:[2,4], pointRadius:0 },
+                { label: 'Comp-PFS', data: cT.map(r => r.pfs), borderColor:'#d97706', backgroundColor:'rgba(217,119,6,.08)', tension:.3, borderWidth:2, pointRadius:0 },
+                { label: 'Comp-PPS', data: cT.map(r => r.pps), borderColor:'#d97706', backgroundColor:'transparent', tension:.3, borderWidth:1.5, borderDash:[4,3], pointRadius:0 },
+                { label: 'Comp-Dead',data: cT.map(r => r.dead), borderColor:'#d97706', backgroundColor:'transparent', tension:.3, borderWidth:1, borderDash:[2,4], pointRadius:0 },
+            ];
+            markovChart.update();
+
+            const scatterPoints = [];
+            const nPrices = 30;
+            const nCycles = Math.floor(model.horizon / model.cycleLen);
+            const adcBase = runMarkov({
+                pProg: getF('adc_pProg'), pDeathPFS: getF('adc_pDeathPFS'), pDeathPPS: getF('adc_pDeathPPS'),
+                uPFS: getF('adc_uPFS'), uPPS: getF('adc_uPPS'),
+                cPFS: getF('adc_cPFS'), cPPS: getF('adc_cPPS'), drugCostPerMonth: 0,
+                cycleLen: model.cycleLen, nCycles, discountRate: model.discountRate
+            });
+            const compR = runMarkov({
+                pProg: getF('comp_pProg'), pDeathPFS: getF('comp_pDeathPFS'), pDeathPPS: getF('comp_pDeathPPS'),
+                uPFS: getF('comp_uPFS'), uPPS: getF('comp_uPPS'),
+                cPFS: getF('comp_cPFS'), cPPS: getF('comp_cPPS'), drugCostPerMonth: getF('comp_drugCost'),
+                cycleLen: model.cycleLen, nCycles, discountRate: model.discountRate
+            });
+
+            const deltaQ = adcBase.totalQALY - compR.totalQALY;
+            const maxP = results.maxMonthlyPrice;
+
+            for (let i = 0; i <= nPrices; i++) {
+                const p = (i / nPrices) * maxP * 1.5;
+                const totalADCcost = adcBase.totalCost + p * adcBase.cumPFSdiscounted;
+                const deltaC = totalADCcost - compR.totalCost;
+                scatterPoints.push({ x: parseFloat(deltaQ.toFixed(3)), y: deltaC });
+            }
+
+            const wtpLineMax = deltaQ * 1.5;
+            const wtpLine = [
+                { x: 0, y: 0 },
+                { x: parseFloat(wtpLineMax.toFixed(3)), y: model.wtp * wtpLineMax }
+            ];
+
+            const curDeltaC = (adcBase.totalCost + results.maxMonthlyPrice * adcBase.cumPFSdiscounted) - compR.totalCost;
+
+            cePlaneChart.data.datasets = [
+                { label: '价格轨迹', data: scatterPoints, type: 'line', borderColor: '#1d4ed8', backgroundColor: 'rgba(29,78,216,.1)', tension: 0.3, borderWidth: 2, pointRadius: 2, pointBackgroundColor: '#1d4ed8' },
+                { label: 'WTP 阈值线', data: wtpLine, type: 'line', borderColor: '#dc2626', borderDash: [6, 4], borderWidth: 1.5, pointRadius: 0, fill: false },
+                { label: '最大可接受价格点', data: [{ x: parseFloat(deltaQ.toFixed(3)), y: curDeltaC }], type: 'scatter', pointBackgroundColor: '#059669', pointRadius: 8, borderColor:'#059669' },
+            ];
+            cePlaneChart.update();
+        }
+
+        function getF(id) { return parseFloat(document.getElementById(id).value) || 0; }
+        function fmt(n, d=0) { return n.toLocaleString('zh-CN', { maximumFractionDigits: d, minimumFractionDigits: d }); }
+
+        function adcUpdate() {
+            initCharts();
+            const model = {
+                cycleLen: getF('adc_cycleLen'), horizon: getF('adc_horizon'),
+                discountRate: getF('adc_discountRate'), wtp: getF('adc_wtp')
+            };
+            const adcP = {
+                pProg: getF('adc_pProg'), pDeathPFS: getF('adc_pDeathPFS'), pDeathPPS: getF('adc_pDeathPPS'),
+                uPFS: getF('adc_uPFS'), uPPS: getF('adc_uPPS'),
+                cPFS: getF('adc_cPFS'), cPPS: getF('adc_cPPS'), dosing: getF('adc_dosing')
+            };
+            const compP = {
+                pProg: getF('comp_pProg'), pDeathPFS: getF('comp_pDeathPFS'), pDeathPPS: getF('comp_pDeathPPS'),
+                uPFS: getF('comp_uPFS'), uPPS: getF('comp_uPPS'),
+                cPFS: getF('comp_cPFS'), cPPS: getF('comp_cPPS'), drugCostPerMonth: getF('comp_drugCost')
+            };
+
+            if (adcP.pProg + adcP.pDeathPFS >= 1 || compP.pProg + compP.pDeathPFS >= 1) return;
+
+            const r = calculatePrice(adcP, compP, model);
+
+            const valid = r.maxMonthlyPrice > 0 && r.deltaQALY > 0;
+            document.getElementById('out_monthly').textContent = valid ? '¥' + fmt(r.maxMonthlyPrice) : '负值*';
+            document.getElementById('out_infusion').textContent = valid ? '¥' + fmt(r.maxPerInfusion) : '负值*';
+            document.getElementById('out_annual').textContent = valid ? '¥' + fmt(r.maxAnnualCost) : '负值*';
+
+            const wtpV = model.wtp;
+            document.getElementById('icer_bar_wtp_label').textContent = 'WTP ¥' + fmt(wtpV) + '/QALY';
+            document.getElementById('icer_bar_2x').textContent = '¥' + fmt(wtpV * 2) + '/QALY';
+            const icerPct = valid ? 100 : 0;
+            const bar = document.getElementById('icer_bar');
+            bar.style.width = icerPct + '%';
+            bar.style.background = valid ? 'var(--green)' : 'var(--red)';
+            const tag = document.getElementById('icer_tag');
+            tag.textContent = valid ? `ICER = WTP = ¥${fmt(wtpV)}` : 'ADC无增量效益';
+            tag.className = 'tag ' + (valid ? 'green' : 'red');
+
+            document.getElementById('m_qaly_adc').textContent = r.adcQALY.toFixed(3);
+            document.getElementById('m_qaly_comp').textContent = r.compQALY.toFixed(3);
+            const dq = r.deltaQALY;
+            document.getElementById('m_delta_qaly').textContent = (dq >= 0 ? '+' : '') + dq.toFixed(3);
+            document.getElementById('m_qaly_eval').innerHTML = `<span class="tag ${dq>0?'green':'red'}">${dq>0?'有增量效益':'无增量效益'}</span>`;
+            document.getElementById('m_ly_adc').textContent = r.adcLY.toFixed(3);
+            document.getElementById('m_ly_comp').textContent = r.compLY.toFixed(3);
+            const dl = r.adcLY - r.compLY;
+            document.getElementById('m_delta_ly').textContent = (dl >= 0 ? '+' : '') + dl.toFixed(3);
+            document.getElementById('m_cost_adc').textContent = '¥' + fmt(r.adcCostNoDrug);
+            document.getElementById('m_cost_comp').textContent = '¥' + fmt(r.compCost);
+            const dc = r.adcCostNoDrug - r.compCost;
+            document.getElementById('m_delta_cost').textContent = (dc >= 0 ? '+¥' : '-¥') + fmt(Math.abs(dc));
+            document.getElementById('m_pfsMo').textContent = r.cumPFSdiscounted.toFixed(2) + ' 患者月';
+            document.getElementById('m_icer').textContent = valid ? '≡ WTP = ¥' + fmt(wtpV) + '/QALY（即最大可接受定价下 ICER 恰等于 WTP）' : '无法计算（无增量效益）';
+            document.getElementById('m_icer_eval').innerHTML = valid ? '<span class="tag green">经济性成立</span>' : '<span class="tag red">不具经济性</span>';
+
+            const wtpLevels = [50000, 80000, 100000, 120000, 150000, 200000, 250000, 300000];
+            let tbody = '';
+            const baseMaxP = r.maxMonthlyPrice;
+            wtpLevels.forEach(w => {
+                const mR = calculatePrice(adcP, compP, { ...model, wtp: w });
+                const pct = baseMaxP > 0 ? ((mR.maxMonthlyPrice / baseMaxP - 1) * 100).toFixed(0) : '—';
+                const barW = Math.max(0, Math.min(100, (mR.maxMonthlyPrice / (baseMaxP * 1.2)) * 100));
+                const isCurrent = w === wtpV;
+                tbody += `<tr style="${isCurrent ? 'background:#eff6ff;font-weight:600' : ''}">
+                    <td>${isCurrent ? '▶ ' : ''}¥${fmt(w)}</td>
+                    <td>¥${mR.maxMonthlyPrice > 0 ? fmt(mR.maxMonthlyPrice) : '—'}</td>
+                    <td>¥${mR.maxPerInfusion > 0 ? fmt(mR.maxPerInfusion) : '—'}</td>
+                    <td>¥${mR.maxAnnualCost > 0 ? fmt(mR.maxAnnualCost) : '—'}</td>
+                    <td><span class="sens-bar-inline" style="width:${barW}%"></span> ${mR.maxMonthlyPrice > 0 ? (pct > 0 ? '+' : '') + pct + '%' : '—'}</td>
+                </tr>`;
+            });
+            document.getElementById('sens_tbody').innerHTML = tbody;
+
+            updateCharts(r, model);
+        }
+
+        function loadPreset(key) {
+            const p = PRESETS[key];
+            setVal('adc_mPFS', p.adc.mPFS); setVal('adc_pProg', p.adc.pProg);
+            setVal('adc_pDeathPFS', p.adc.pDeathPFS); setVal('adc_pDeathPPS', p.adc.pDeathPPS);
+            setVal('adc_uPFS', p.adc.uPFS); setVal('adc_uPPS', p.adc.uPPS);
+            setVal('adc_cPFS', p.adc.cPFS); setVal('adc_cPPS', p.adc.cPPS);
+            setVal('adc_dosing', p.adc.dosing);
+            setVal('comp_mPFS', p.comp.mPFS); setVal('comp_pProg', p.comp.pProg);
+            setVal('comp_pDeathPFS', p.comp.pDeathPFS); setVal('comp_pDeathPPS', p.comp.pDeathPPS);
+            setVal('comp_uPFS', p.comp.uPFS); setVal('comp_uPPS', p.comp.uPPS);
+            setVal('comp_cPFS', p.comp.cPFS); setVal('comp_cPPS', p.comp.cPPS);
+            setVal('comp_drugCost', p.comp.drugCost);
+            setVal('adc_cycleLen', p.model.cycleLen); setVal('adc_horizon', p.model.horizon);
+            setVal('adc_discountRate', p.model.discountRate); setVal('adc_wtp', p.model.wtp);
+
+            document.querySelectorAll('.adc-calc .preset-btn').forEach(b => b.classList.remove('active'));
+            event.target.classList.add('active');
+            adcUpdate();
+        }
+
+        function setVal(id, v) { const el = document.getElementById(id); if (el) el.value = v; }
+
+        document.querySelectorAll('.adc-calc input, .adc-calc select').forEach(el => {
+            if (!el.getAttribute('oninput')) el.addEventListener('input', adcUpdate);
+        });
+
+        // 初始化
+        updateComparator();
+        tumorCalculate();
+    </script>
+</body>
+</html>
